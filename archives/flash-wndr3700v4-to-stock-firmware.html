@@ -97,7 +97,7 @@
 <meta property="og:image" content="https://kiritoa.github.io/usr/uploads/2016/12/136554523.png">
 <meta property="og:image" content="https://kiritoa.github.io/usr/uploads/2016/12/701989518.png">
 <meta property="og:image" content="https://kiritoa.github.io/usr/uploads/2016/11/1620348105.png">
-<meta property="og:updated_time" content="2016-12-06T16:13:25.868Z">
+<meta property="og:updated_time" content="2017-03-24T06:11:26.317Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="WNDR3700v4刷回原厂固件">
 <meta name="twitter:description" content="之前刷Openwrt的时候已经有人反映过说再也刷不回原厂固件，不过我是不太相信的，因为路由器本身有救砖模式。不过真正刷的时候还是折腾了好一阵子，但肯定是没问题的。这里结合网上的帖子和自己的研究分析了一下原因并列出解决步骤，本文适用于刷了OpenWrt或者DD-WRT的NETGEAR WNDR3700v4路由器，直接TFTP方式刷回原厂固件失败的情况。此方法也适用于WNDR4300，自行查找对应的固">
@@ -391,7 +391,7 @@
 wndr4300_mtdlayout=mtdparts=ar934x-nfc:256k(u-boot)ro,256k(u-boot-env)ro,256k(caldata),512k(pot),2048k(language),512k(config),3072k(traffic_meter),2048k(kernel),121856k(ubi),123904k@0x6c0000(firmware),256k(caldata_backup),-(reserved)
 </code></pre><p>可以看出改版固件增大了<strong>ubi</strong>和<strong>firmware</strong>的空间，的确使得Openwrt实际可用空间变大，但同时也破坏了原始Flash的空间分配（其实就是利用了后面的reserved空间，但这样caldata_backup位置也会后移，已经变得和官方固件不一致），直接刷回原版固件就很有可能出现问题。</p>
 <p>而DD-WRT固件也同样会产生这个问题，其Flash分区如下：</p>
-<table> <tr align="center"><td rowspan="2">mtd0<br><b>RedBoot</b><br>512KiB</td><td rowspan="2">mtd5<br><b>board_config</b><br>512KiB</td><td rowspan="2">unused<br>2.5MiB</td><td rowspan="2">mtd4<br><b>nvram</b><br>512KiB</td><td rowspan="2">unused<br>3MiB</td><td colspan="3">mtd1 <b>linux</b> 124160KiB (121.25MiB)</td></tr><tr align="center"><td>unused<br>1152KiB</td><td>mtd2<br><b>rootfs</b><br>21504KiB</td><td>mtd3<br><b>ddwrt</b><br>101504KiB</td></tr></table>
+<table border="1"><br><tr align="center"><td rowspan="2">mtd0<br><b>RedBoot</b><br>512KiB</td><td rowspan="2">mtd5<br><b>board_config</b><br>512KiB</td><td rowspan="2">unused<br>2.5MiB</td><td rowspan="2">mtd4<br><b>nvram</b><br>512KiB</td><td rowspan="2">unused<br>3MiB</td><td colspan="3">mtd1 <b>linux</b> 124160KiB (121.25MiB)</td></tr><tr align="center"><td>unused<br>1152KiB</td><td>mtd2<br><b>rootfs</b><br>21504KiB</td><td>mtd3<br><b>ddwrt</b><br>101504KiB</td></tr></table>
 
 <p>其中linux分区在Flash上的地址对应的就是Openwrt和原版固件中frimware，caldata_backup和reserved的位置（0x0000006c0000-0x000008000000）。</p>
 <p>在TFTP模式下似乎并不会自动对flash执行erase命令（相当于格式化），仅仅覆盖了原来的内容，所以第三方固件的残留内容很有可能影响了原版固件的运作，因此需要手动执行该命令。为了方便擦除可以先把路由器刷到DD-WRT，然后对linux分区执行erase命令，把frimware以后的内容全部清空再刷回原版固件。</p>
@@ -476,6 +476,10 @@ wndr4300_mtdlayout=mtdparts=ar934x-nfc:256k(u-boot)ro,256k(u-boot-env)ro,256k(ca
 
           <div class="post-nav-prev post-nav-item">
             
+              <a href="/archives/setup-proxy-for-windows-apps.html" rel="prev" title="为Windows apps应用设置本地代理">
+                为Windows apps应用设置本地代理 <i class="fa fa-chevron-right"></i>
+              </a>
+            
           </div>
         </div>
       
@@ -549,7 +553,7 @@ wndr4300_mtdlayout=mtdparts=ar934x-nfc:256k(u-boot)ro,256k(u-boot-env)ro,256k(ca
         <nav class="site-state motion-element">
           <div class="site-state-item site-state-posts">
             <a href="/archives">
-              <span class="site-state-item-count">8</span>
+              <span class="site-state-item-count">10</span>
               <span class="site-state-item-name">日志</span>
             </a>
           </div>
@@ -557,7 +561,7 @@ wndr4300_mtdlayout=mtdparts=ar934x-nfc:256k(u-boot)ro,256k(u-boot-env)ro,256k(ca
           
             <div class="site-state-item site-state-categories">
               <a href="/categories">
-                <span class="site-state-item-count">2</span>
+                <span class="site-state-item-count">3</span>
                 <span class="site-state-item-name">分类</span>
               </a>
             </div>
@@ -566,7 +570,7 @@ wndr4300_mtdlayout=mtdparts=ar934x-nfc:256k(u-boot)ro,256k(u-boot-env)ro,256k(ca
           
             <div class="site-state-item site-state-tags">
               <a href="/tags">
-                <span class="site-state-item-count">18</span>
+                <span class="site-state-item-count">21</span>
                 <span class="site-state-item-name">标签</span>
               </a>
             </div>
@@ -662,8 +666,8 @@ wndr4300_mtdlayout=mtdparts=ar934x-nfc:256k(u-boot)ro,256k(u-boot-env)ro,256k(ca
       <div class="footer-inner">
         <div class="copyright" >
   
-  &copy; 
-  <span itemprop="copyrightYear">2016</span>
+  &copy;  2016 - 
+  <span itemprop="copyrightYear">2017</span>
   <span class="with-love">
     <i class="fa fa-"></i>
   </span>
