@@ -288,7 +288,7 @@
     <link href="https://kiritox.me/archives/flash-wndr3700v4-to-stock-firmware.html"/>
     <id>https://kiritox.me/archives/flash-wndr3700v4-to-stock-firmware.html</id>
     <published>2016-11-23T02:38:00.000Z</published>
-    <updated>2019-03-17T15:53:31.137Z</updated>
+    <updated>2019-03-31T10:28:15.936Z</updated>
     
     <content type="html"><![CDATA[<p>之前刷Openwrt的时候已经有人反映过说再也刷不回原厂固件，不过我是不太相信的，因为路由器本身有救砖模式。不过真正刷的时候还是折腾了好一阵子，但肯定是没问题的。这里结合网上的帖子和自己的研究分析了一下原因并列出解决步骤，本文适用于刷了OpenWrt或者DD-WRT的NETGEAR WNDR3700v4路由器，直接TFTP方式刷回原厂固件失败的情况。此方法也适用于WNDR4300，自行查找对应的固件刷入即可。</p>
 <a id="more"></a>
@@ -350,7 +350,7 @@ wndr4300_mtdlayout=mtdparts=ar934x-nfc:256k(u-boot)ro,256k(u-boot-env)ro,256k(ca
     
     </summary>
     
-      <category term="Tech" scheme="https://kiritox.me/categories/Tech/"/>
+      <category term="Router" scheme="https://kiritox.me/categories/Router/"/>
     
     
       <category term="WNDR3700v4" scheme="https://kiritox.me/tags/WNDR3700v4/"/>
@@ -368,7 +368,7 @@ wndr4300_mtdlayout=mtdparts=ar934x-nfc:256k(u-boot)ro,256k(u-boot-env)ro,256k(ca
     <link href="https://kiritox.me/archives/home-fiber-network-upgrade-log.html"/>
     <id>https://kiritox.me/archives/home-fiber-network-upgrade-log.html</id>
     <published>2016-11-22T12:22:00.000Z</published>
-    <updated>2019-03-17T15:53:36.159Z</updated>
+    <updated>2019-03-31T10:29:37.297Z</updated>
     
     <content type="html"><![CDATA[<p>电信的光纤升级改造计划已经搞了好几年，虽然一直都有想升级的想法，但是之前电信一直都说线路没有覆盖到不能升级，到了最近终于说是覆盖到小区了，不过去了电信营业厅问才知道升级也要收钱的( ˘･з･)没想到去完营业厅第二天电信（不是营业厅的人）就打电话来说现在要光进铜退，可以免费升光纤，我擦。。。。还好没同意升级不然白花钱了。</p>
 <a id="more"></a>
@@ -413,7 +413,7 @@ wndr4300_mtdlayout=mtdparts=ar934x-nfc:256k(u-boot)ro,256k(u-boot-env)ro,256k(ca
     
     </summary>
     
-      <category term="Tech" scheme="https://kiritox.me/categories/Tech/"/>
+      <category term="Networking" scheme="https://kiritox.me/categories/Networking/"/>
     
     
       <category term="电信" scheme="https://kiritox.me/tags/%E7%94%B5%E4%BF%A1/"/>
@@ -845,7 +845,7 @@ Something wicked happened resolving &apos;packages.openmediavault.org:http&apos;
     <link href="https://kiritox.me/archives/solve-typecho-rewrite-upload-problem.html"/>
     <id>https://kiritox.me/archives/solve-typecho-rewrite-upload-problem.html</id>
     <published>2016-04-25T05:21:00.000Z</published>
-    <updated>2019-03-31T10:21:07.211Z</updated>
+    <updated>2019-03-31T10:30:31.922Z</updated>
     
     <content type="html"><![CDATA[<p>在设置Typecho过程中发现始终无法启用地址重写功能，一直弹出”重写功能检测失败, 请检查你的服务器设置”的提示。</p>
 <p><img src="https://kiritoa.github.io/usr/uploads/2016/04/2955989631.png" alt="重写功能检测失败, 请检查你的服务器设置"></p>
@@ -882,7 +882,7 @@ RewriteRule ^(.*)$ /blog/index.php/$1 [L]
     
     </summary>
     
-      <category term="Tech" scheme="https://kiritox.me/categories/Tech/"/>
+      <category term="Blog" scheme="https://kiritox.me/categories/Blog/"/>
     
     
       <category term="Typecho" scheme="https://kiritox.me/tags/Typecho/"/>
