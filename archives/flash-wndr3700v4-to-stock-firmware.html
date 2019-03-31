@@ -1,20 +1,25 @@
-<!doctype html>
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
 
 
 
   
 
 
-<html class="theme-next pisces use-motion" lang="zh-Hans">
+<html class="theme-next pisces use-motion" lang="en">
 <head>
   <meta charset="UTF-8"/>
-<meta http-equiv="X-UA-Compatible" content="IE=edge" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
-
-
-
-<meta http-equiv="Cache-Control" content="no-transform" />
-<meta http-equiv="Cache-Control" content="no-siteapp" />
+<meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2"/>
+<meta name="theme-color" content="#222"/>
 
 
 
@@ -27,96 +32,54 @@
 
 
 
-  
-  
-  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css" />
-
-
-
-
-  
-  
-  
-  
-
-  
-    
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-    
-    
-    <link href="//fonts.googleapis.com/css?family=Lato:300,300italic,400,400italic,700,700italic&subset=latin,latin-ext" rel="stylesheet" type="text/css">
-  
 
 
 
 
 
 
-<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
-
-<link href="/css/main.css?v=5.1.0" rel="stylesheet" type="text/css" />
-
-
-  <meta name="keywords" content="WNDR3700v4,Openwrt,NETGEAR,WNDR4300," />
-
-
-
-
-
-  <link rel="alternate" href="/atom.xml" title="KiritoA's Blog" type="application/atom+xml" />
-
-
-
-
-  <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico?v=5.1.0" />
 
 
 
 
 
 
-<meta name="description" content="之前刷Openwrt的时候已经有人反映过说再也刷不回原厂固件，不过我是不太相信的，因为路由器本身有救砖模式。不过真正刷的时候还是折腾了好一阵子，但肯定是没问题的。这里结合网上的帖子和自己的研究分析了一下原因并列出解决步骤，本文适用于刷了OpenWrt或者DD-WRT的NETGEAR WNDR3700v4路由器，直接TFTP方式刷回原厂固件失败的情况。此方法也适用于WNDR4300，自行查找对应的固">
-<meta property="og:type" content="article">
-<meta property="og:title" content="WNDR3700v4刷回原厂固件">
-<meta property="og:url" content="https://kiritox.me/archives/flash-wndr3700v4-to-stock-firmware.html">
-<meta property="og:site_name" content="KiritoA's Blog">
-<meta property="og:description" content="之前刷Openwrt的时候已经有人反映过说再也刷不回原厂固件，不过我是不太相信的，因为路由器本身有救砖模式。不过真正刷的时候还是折腾了好一阵子，但肯定是没问题的。这里结合网上的帖子和自己的研究分析了一下原因并列出解决步骤，本文适用于刷了OpenWrt或者DD-WRT的NETGEAR WNDR3700v4路由器，直接TFTP方式刷回原厂固件失败的情况。此方法也适用于WNDR4300，自行查找对应的固">
-<meta property="og:image" content="https://kiritoa.github.io/usr/uploads/2016/12/3394940427.png">
-<meta property="og:image" content="https://kiritoa.github.io/usr/uploads/2016/12/344266447.png">
-<meta property="og:image" content="https://kiritoa.github.io/usr/uploads/2016/12/136554523.png">
-<meta property="og:image" content="https://kiritoa.github.io/usr/uploads/2016/12/701989518.png">
-<meta property="og:image" content="https://kiritoa.github.io/usr/uploads/2016/11/1620348105.png">
-<meta property="og:updated_time" content="2017-03-24T06:11:26.317Z">
-<meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="WNDR3700v4刷回原厂固件">
-<meta name="twitter:description" content="之前刷Openwrt的时候已经有人反映过说再也刷不回原厂固件，不过我是不太相信的，因为路由器本身有救砖模式。不过真正刷的时候还是折腾了好一阵子，但肯定是没问题的。这里结合网上的帖子和自己的研究分析了一下原因并列出解决步骤，本文适用于刷了OpenWrt或者DD-WRT的NETGEAR WNDR3700v4路由器，直接TFTP方式刷回原厂固件失败的情况。此方法也适用于WNDR4300，自行查找对应的固">
-<meta name="twitter:image" content="https://kiritoa.github.io/usr/uploads/2016/12/3394940427.png">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2"/>
+
+<link rel="stylesheet" href="/css/main.css?v=7.0.1"/>
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.0.1">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.0.1">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.0.1">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=7.0.1" color="#222">
 
 
 
-<script type="text/javascript" id="hexo.configurations">
+
+
+
+
+<script id="hexo.configurations">
   var NexT = window.NexT || {};
   var CONFIG = {
     root: '/',
     scheme: 'Pisces',
-    sidebar: {"position":"left","display":"post"},
-    fancybox: true,
-    motion: true,
-    duoshuo: {
-      userId: '0',
-      author: '博主'
-    },
+    version: '7.0.1',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false,"dimmer":false},
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
     algolia: {
       applicationID: '',
       apiKey: '',
@@ -128,18 +91,48 @@
 </script>
 
 
+  
+
+
+
+
+  <meta name="description" content="之前刷Openwrt的时候已经有人反映过说再也刷不回原厂固件，不过我是不太相信的，因为路由器本身有救砖模式。不过真正刷的时候还是折腾了好一阵子，但肯定是没问题的。这里结合网上的帖子和自己的研究分析了一下原因并列出解决步骤，本文适用于刷了OpenWrt或者DD-WRT的NETGEAR WNDR3700v4路由器，直接TFTP方式刷回原厂固件失败的情况。此方法也适用于WNDR4300，自行查找对应的固">
+<meta name="keywords" content="WNDR3700v4,Openwrt,NETGEAR,WNDR4300">
+<meta property="og:type" content="article">
+<meta property="og:title" content="WNDR3700v4刷回原厂固件">
+<meta property="og:url" content="https://kiritox.me/archives/flash-wndr3700v4-to-stock-firmware.html">
+<meta property="og:site_name" content="KiritoA&#39;s Blog">
+<meta property="og:description" content="之前刷Openwrt的时候已经有人反映过说再也刷不回原厂固件，不过我是不太相信的，因为路由器本身有救砖模式。不过真正刷的时候还是折腾了好一阵子，但肯定是没问题的。这里结合网上的帖子和自己的研究分析了一下原因并列出解决步骤，本文适用于刷了OpenWrt或者DD-WRT的NETGEAR WNDR3700v4路由器，直接TFTP方式刷回原厂固件失败的情况。此方法也适用于WNDR4300，自行查找对应的固">
+<meta property="og:locale" content="en">
+<meta property="og:image" content="https://kiritoa.github.io/usr/uploads/2016/12/3394940427.png">
+<meta property="og:image" content="https://kiritoa.github.io/usr/uploads/2016/12/344266447.png">
+<meta property="og:image" content="https://kiritoa.github.io/usr/uploads/2016/12/136554523.png">
+<meta property="og:image" content="https://kiritoa.github.io/usr/uploads/2016/12/701989518.png">
+<meta property="og:image" content="https://kiritoa.github.io/usr/uploads/2016/11/1620348105.png">
+<meta property="og:updated_time" content="2019-03-17T15:53:31.137Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="WNDR3700v4刷回原厂固件">
+<meta name="twitter:description" content="之前刷Openwrt的时候已经有人反映过说再也刷不回原厂固件，不过我是不太相信的，因为路由器本身有救砖模式。不过真正刷的时候还是折腾了好一阵子，但肯定是没问题的。这里结合网上的帖子和自己的研究分析了一下原因并列出解决步骤，本文适用于刷了OpenWrt或者DD-WRT的NETGEAR WNDR3700v4路由器，直接TFTP方式刷回原厂固件失败的情况。此方法也适用于WNDR4300，自行查找对应的固">
+<meta name="twitter:image" content="https://kiritoa.github.io/usr/uploads/2016/12/3394940427.png">
+
+
+
+  <link rel="alternate" href="/atom.xml" title="KiritoA's Blog" type="application/atom+xml"/>
+
+
+
 
   <link rel="canonical" href="https://kiritox.me/archives/flash-wndr3700v4-to-stock-firmware.html"/>
 
 
 
+<script id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
 
-
-  <title> WNDR3700v4刷回原厂固件 | KiritoA's Blog </title>
-</head>
-
-<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
-
+  <title>WNDR3700v4刷回原厂固件 | KiritoA's Blog</title>
   
 
 
@@ -150,122 +143,175 @@
 
 
 
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-title { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="en">
 
   
   
     
   
 
-  <div class="container one-collumn sidebar-position-left page-post-detail ">
+  <div class="container sidebar-position-left page-post-detail">
     <div class="headband"></div>
 
     <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
-      <div class="header-inner"><div class="site-meta ">
-  
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+    
 
-  <div class="custom-logo-site-title">
-    <a href="/"  class="brand" rel="start">
-      <span class="logo-line-before"><i></i></span>
-      <span class="site-title">KiritoA's Blog</span>
-      <span class="logo-line-after"><i></i></span>
-    </a>
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">KiritoA's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+    
   </div>
-  <p class="site-subtitle"></p>
+
+  <div class="site-nav-toggle">
+    <button aria-label="Toggle navigation bar">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
 </div>
 
-<div class="site-nav-toggle">
-  <button>
-    <span class="btn-bar"></span>
-    <span class="btn-bar"></span>
-    <span class="btn-bar"></span>
-  </button>
-</div>
+
 
 <nav class="site-nav">
-  
-
   
     <ul id="menu" class="menu">
       
         
-        <li class="menu-item menu-item-home">
-          <a href="/" rel="section">
-            
-              <i class="menu-item-icon fa fa-fw fa-home"></i> <br />
-            
-            首页
-          </a>
-        </li>
-      
         
-        <li class="menu-item menu-item-categories">
-          <a href="/categories" rel="section">
-            
-              <i class="menu-item-icon fa fa-fw fa-th"></i> <br />
-            
-            分类
-          </a>
-        </li>
-      
         
-        <li class="menu-item menu-item-archives">
-          <a href="/archives" rel="section">
-            
-              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />
-            
-            归档
-          </a>
-        </li>
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
       
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br/>Home</a>
+
+  </li>
         
-        <li class="menu-item menu-item-tags">
-          <a href="/tags" rel="section">
-            
-              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br />
-            
-            标签
-          </a>
-        </li>
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
       
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br/>Tags</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br/>Categories</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives menu-item-active">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br/>Archives</a>
+
+  </li>
 
       
-        <li class="menu-item menu-item-search">
-          
-            <a href="javascript:;" class="popup-trigger">
-          
-            
-              <i class="menu-item-icon fa fa-search fa-fw"></i> <br />
-            
-            搜索
-          </a>
-        </li>
       
     </ul>
   
 
   
-    <div class="site-search">
-      
-  <div class="popup">
- <span class="search-icon fa fa-search"></span>
- <input type="text" id="local-search-input">
- <div id="local-search-result"></div>
- <span class="popup-btn-close">close</span>
-</div>
 
-
-    </div>
   
 </nav>
 
 
 
- </div>
+  
+
+
+
+</div>
     </header>
+
+    
+
 
     <main id="main" class="main">
       <div class="main-inner">
         <div class="content-wrap">
+          
+            
+
+          
           <div id="content" class="content">
             
 
@@ -278,67 +324,75 @@
   
   
 
-  <article class="post post-type-normal " itemscope itemtype="http://schema.org/Article">
-  <link itemprop="mainEntityOfPage" href="https://kiritox.me/archives/flash-wndr3700v4-to-stock-firmware.html">
+  
 
-  <span style="display:none" itemprop="author" itemscope itemtype="http://schema.org/Person">
-    <meta itemprop="name" content="KiritoA">
-    <meta itemprop="description" content="">
-    <meta itemprop="image" content="/images/avatar.png">
-  </span>
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://kiritox.me/archives/flash-wndr3700v4-to-stock-firmware.html"/>
 
-  <span style="display:none" itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-    <meta itemprop="name" content="KiritoA's Blog">
-    <span style="display:none" itemprop="logo" itemscope itemtype="http://schema.org/ImageObject">
-      <img style="display:none;" itemprop="url image" alt="KiritoA's Blog" src="">
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="KiritoA"/>
+      <meta itemprop="description" content="一个高端大气上档次的网站（雾"/>
+      <meta itemprop="image" content="/images/avatar.png"/>
     </span>
-  </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="KiritoA's Blog"/>
+    </span>
 
     
       <header class="post-header">
 
         
         
-          <h1 class="post-title" itemprop="name headline">
-            
-            
-              
-                WNDR3700v4刷回原厂固件
+          <h2 class="post-title" itemprop="name headline">WNDR3700v4刷回原厂固件
+
               
             
-          </h1>
+          </h2>
         
 
         <div class="post-meta">
           <span class="post-time">
+
+            
+            
+            
+
             
               <span class="post-meta-item-icon">
                 <i class="fa fa-calendar-o"></i>
               </span>
-              <span class="post-meta-item-text">发表于</span>
-              <time title="Post created" itemprop="dateCreated datePublished" datetime="2016-11-23T10:38:00+08:00">
-                2016-11-23
-              </time>
-            
+              
+                <span class="post-meta-item-text">Posted on</span>
+              
 
+              
+                
+              
+
+              <time title="Created: 2016-11-23 10:38:00" itemprop="dateCreated datePublished" datetime="2016-11-23T10:38:00+08:00">2016-11-23</time>
             
 
             
           </span>
 
           
-            <span class="post-category" >
+            <span class="post-category">
+            
               <span class="post-meta-divider">|</span>
+            
               <span class="post-meta-item-icon">
                 <i class="fa fa-folder-o"></i>
               </span>
-              <span class="post-meta-item-text">分类于</span>
               
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/技术/" itemprop="url" rel="index">
-                    <span itemprop="name">技术</span>
-                  </a>
-                </span>
+                <span class="post-meta-item-text">In</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/Tech/" itemprop="url" rel="index"><span itemprop="name">Tech</span></a></span>
 
                 
                 
@@ -348,8 +402,15 @@
 
           
             
+            
+              
               <span class="post-comments-count">
                 <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+            
+                <span class="post-meta-item-text">Comments: </span>
                 <a href="/archives/flash-wndr3700v4-to-stock-firmware.html#comments" itemprop="discussionUrl">
                   <span class="post-comments-count disqus-comment-count" data-disqus-identifier="archives/flash-wndr3700v4-to-stock-firmware.html" itemprop="commentCount"></span>
                 </a>
@@ -358,8 +419,8 @@
           
 
           
-
           
+
           
 
           
@@ -370,7 +431,9 @@
       </header>
     
 
-
+    
+    
+    
     <div class="post-body" itemprop="articleBody">
 
       
@@ -381,7 +444,7 @@
 <a id="more"></a>
 <h2 id="原因分析"><a href="#原因分析" class="headerlink" title="原因分析"></a>原因分析</h2><p>本人之前使用的是<strong>openwrt 15.01</strong>版本，TFTP刷回原厂固件表现为路由器Power指示灯一直是橙色，似乎还不断地自动重启，因此常规的救砖方式无效。先上结论，刷回原版固件出问题基本都是因为刷入第三方固件时<strong>破坏了路由器里面Flash的分区</strong>。</p>
 <p>WNDR3700v4里面的Flash也有空间是用来存放设置，uboot等内容，各自存放在不同的分区，而firmware部分才是真正的存放Openwrt系统的地方，Openwrt里面看到的可用空间也是这部分的内容。而刷入的img文件（平时说的固件）其实也包括了整个Flash的分区信息。</p>
-<p>根据Openwrt官网WNDR4300 Flash布局的<a href="https://wiki.openwrt.org/zh-cn/toh/netgear/wndr4300" target="_blank" rel="external">说明</a>，WNDR3700v4/WNDR4300（两款型号硬件基本一致，也都使用NAND Flash）原版固件的Flash布局（为方便理解统一称为分区）是这样的：</p>
+<p>根据Openwrt官网WNDR4300 Flash布局的<a href="https://wiki.openwrt.org/zh-cn/toh/netgear/wndr4300" target="_blank" rel="noopener">说明</a>，WNDR3700v4/WNDR4300（两款型号硬件基本一致，也都使用NAND Flash）原版固件的Flash布局（为方便理解统一称为分区）是这样的：</p>
 <p><img src="https://kiritoa.github.io/usr/uploads/2016/12/3394940427.png" alt="Screenshot 2016-12-03 09.35.17.png"></p>
 <p>Openwrt官方固件是这样的</p>
 <p><img src="https://kiritoa.github.io/usr/uploads/2016/12/344266447.png" alt="Screenshot 2016-12-03 09.35.23.png"></p>
@@ -393,19 +456,20 @@ wndr4300_mtdlayout=mtdparts=ar934x-nfc:256k(u-boot)ro,256k(u-boot-env)ro,256k(ca
 <p>而DD-WRT固件也同样会产生这个问题，其Flash分区如下：</p>
 <table border="1"><br><tr align="center"><td rowspan="2">mtd0<br><b>RedBoot</b><br>512KiB</td><td rowspan="2">mtd5<br><b>board_config</b><br>512KiB</td><td rowspan="2">unused<br>2.5MiB</td><td rowspan="2">mtd4<br><b>nvram</b><br>512KiB</td><td rowspan="2">unused<br>3MiB</td><td colspan="3">mtd1 <b>linux</b> 124160KiB (121.25MiB)</td></tr><tr align="center"><td>unused<br>1152KiB</td><td>mtd2<br><b>rootfs</b><br>21504KiB</td><td>mtd3<br><b>ddwrt</b><br>101504KiB</td></tr></table>
 
+
 <p>其中linux分区在Flash上的地址对应的就是Openwrt和原版固件中frimware，caldata_backup和reserved的位置（0x0000006c0000-0x000008000000）。</p>
 <p>在TFTP模式下似乎并不会自动对flash执行erase命令（相当于格式化），仅仅覆盖了原来的内容，所以第三方固件的残留内容很有可能影响了原版固件的运作，因此需要手动执行该命令。为了方便擦除可以先把路由器刷到DD-WRT，然后对linux分区执行erase命令，把frimware以后的内容全部清空再刷回原版固件。</p>
 <h2 id="固件和环境准备"><a href="#固件和环境准备" class="headerlink" title="固件和环境准备"></a>固件和环境准备</h2><ol>
 <li><p>在控制面板“启用或关闭windows功能”启用“TFTP客户端”组件。</p>
 </li>
-<li><p>在DD-WRT下载WNDR3700v4最新固件<a href="http://www.dd-wrt.com/wiki/index.php/Netgear_WNDR3700#v4" target="_blank" rel="external">ftp://ftp.dd-wrt.com/betas/2014/02-04-2014-r23503/netgear-wndr3700v4/wndr3700v4-factory.img</a>。</p>
+<li><p>在DD-WRT下载WNDR3700v4最新固件<a href="http://www.dd-wrt.com/wiki/index.php/Netgear_WNDR3700#v4" target="_blank" rel="noopener">ftp://ftp.dd-wrt.com/betas/2014/02-04-2014-r23503/netgear-wndr3700v4/wndr3700v4-factory.img</a>。</p>
 </li>
 <li><p>下载最新版固件，可选择国行（PRRU，中国俄罗斯特供版？）固件或者国际版固件，PRRU固件增加了IPTV，IP-MAC，脱机下载等国际版没有的功能，而国际版则版本较新，修复改进的项目比较多，各位可以自行斟酌选哪个版本。</p>
 </li>
 </ol>
-<p><strong>Firmware Version 1.0.2.80 (All Regions Except China &amp; Russia)</strong><br><a href="http://www.downloads.netgear.com/files/GDC/WNDR3700V4/WNDR3700v4-V1.0.2.80.zip" target="_blank" rel="external">http://www.downloads.netgear.com/files/GDC/WNDR3700V4/WNDR3700v4-V1.0.2.80.zip</a></p>
-<p><strong>Firmware Version 1.0.1.60 (For China and Russia Only)</strong><br><a href="http://www.downloads.netgear.com/files/GDC/WNDR3700V4/WNDR3700v4_PRRU_FW_V1.0.1.60.zip" target="_blank" rel="external">http://www.downloads.netgear.com/files/GDC/WNDR3700V4/WNDR3700v4_PRRU_FW_V1.0.1.60.zip</a></p>
-<p>参考帖子:<br><a href="http://www.right.com.cn/forum/thread-185263-1-1.html" target="_blank" rel="external">http://www.right.com.cn/forum/thread-185263-1-1.html</a><br><a href="http://www.right.com.cn/forum/thread-154774-1-1.html" target="_blank" rel="external">http://www.right.com.cn/forum/thread-154774-1-1.html</a></p>
+<p><strong>Firmware Version 1.0.2.80 (All Regions Except China &amp; Russia)</strong><br><a href="http://www.downloads.netgear.com/files/GDC/WNDR3700V4/WNDR3700v4-V1.0.2.80.zip" target="_blank" rel="noopener">http://www.downloads.netgear.com/files/GDC/WNDR3700V4/WNDR3700v4-V1.0.2.80.zip</a></p>
+<p><strong>Firmware Version 1.0.1.60 (For China and Russia Only)</strong><br><a href="http://www.downloads.netgear.com/files/GDC/WNDR3700V4/WNDR3700v4_PRRU_FW_V1.0.1.60.zip" target="_blank" rel="noopener">http://www.downloads.netgear.com/files/GDC/WNDR3700V4/WNDR3700v4_PRRU_FW_V1.0.1.60.zip</a></p>
+<p>参考帖子:<br><a href="http://www.right.com.cn/forum/thread-185263-1-1.html" target="_blank" rel="noopener">http://www.right.com.cn/forum/thread-185263-1-1.html</a><br><a href="http://www.right.com.cn/forum/thread-154774-1-1.html" target="_blank" rel="noopener">http://www.right.com.cn/forum/thread-154774-1-1.html</a></p>
 <h2 id="实现"><a href="#实现" class="headerlink" title="实现"></a>实现</h2><ol>
 <li><p>路由器断电后按住RESET键开机，等待电源指示灯变成绿色闪烁状态时松开，用网线连接路由器，网卡IP设置成192.198.1.2（只要是同网段不是192.168.1.1的IP都可以），子网掩码255.255.255.0，网关设置192.168.1.1.</p>
 </li>
@@ -417,7 +481,7 @@ wndr4300_mtdlayout=mtdparts=ar934x-nfc:256k(u-boot)ro,256k(u-boot-env)ro,256k(ca
 <p><img src="https://kiritoa.github.io/usr/uploads/2016/12/136554523.png" alt="Screenshot 2016-12-03 00.09.34.png"></p>
 <p><img src="https://kiritoa.github.io/usr/uploads/2016/12/701989518.png" alt="Screenshot 2016-12-03 00.23.31.png"></p>
 <ol>
-<li>使用SSH工具登入，Windows平台个人推荐<a href="http://mobaxterm.mobatek.net/" target="_blank" rel="external">MobaXterm</a>，SSH登陆用户名为root，密码是之前设置的登陆密码，成功登陆后执行以下命令：</li>
+<li>使用SSH工具登入，Windows平台个人推荐<a href="http://mobaxterm.mobatek.net/" target="_blank" rel="noopener">MobaXterm</a>，SSH登陆用户名为root，密码是之前设置的登陆密码，成功登陆后执行以下命令：</li>
 </ol>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line">mtd erase linux</div><div class="line">reboot</div></pre></td></tr></table></figure>
 <ol>
@@ -432,20 +496,20 @@ wndr4300_mtdlayout=mtdparts=ar934x-nfc:256k(u-boot)ro,256k(u-boot-env)ro,256k(ca
       
     </div>
 
-    <div>
-      
-        
+    
 
-      
-    </div>
+    
+    
+    
 
-    <div>
-      
-        
+    
 
+    
       
-    </div>
+    
+    
 
+    
 
     <footer class="post-footer">
       
@@ -460,6 +524,10 @@ wndr4300_mtdlayout=mtdparts=ar934x-nfc:256k(u-boot)ro,256k(u-boot-env)ro,256k(ca
             <a href="/tags/WNDR4300/" rel="tag"># WNDR4300</a>
           
         </div>
+      
+
+      
+      
       
 
       
@@ -487,31 +555,28 @@ wndr4300_mtdlayout=mtdparts=ar934x-nfc:256k(u-boot)ro,256k(u-boot-env)ro,256k(ca
       
       
     </footer>
+  </div>
+  
+  
+  
   </article>
 
 
-
-    <div class="post-spread">
-      
-    </div>
   </div>
 
 
           </div>
           
 
-
-          
-  <div class="comments" id="comments">
-    
+  
+    <div class="comments" id="comments">
       <div id="disqus_thread">
-        <noscript>
-          Please enable JavaScript to view the
-          <a href="//disqus.com/?ref_noscript">comments powered by Disqus.</a>
-        </noscript>
+        <noscript>Please enable JavaScript to view the comments powered by Disqus.</noscript>
       </div>
-    
-  </div>
+    </div>
+
+  
+
 
 
         </div>
@@ -533,129 +598,224 @@ wndr4300_mtdlayout=mtdparts=ar934x-nfc:256k(u-boot)ro,256k(u-boot-env)ro,256k(ca
 
       
         <ul class="sidebar-nav motion-element">
-          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap" >
-            文章目录
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            Table of Contents
           </li>
-          <li class="sidebar-nav-overview" data-target="site-overview">
-            站点概览
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            Overview
           </li>
         </ul>
       
 
-      <section class="site-overview sidebar-panel">
-        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
-          <img class="site-author-image" itemprop="image"
-               src="/images/avatar.png"
-               alt="KiritoA" />
-          <p class="site-author-name" itemprop="name">KiritoA</p>
-          <p class="site-description motion-element" itemprop="description">一个高端大气上档次的网站（雾</p>
-        </div>
-        <nav class="site-state motion-element">
-          <div class="site-state-item site-state-posts">
-            <a href="/archives">
-              <span class="site-state-item-count">10</span>
-              <span class="site-state-item-name">日志</span>
-            </a>
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image"
+                src="/images/avatar.png"
+                alt="KiritoA"/>
+            
+              <p class="site-author-name" itemprop="name">KiritoA</p>
+              <p class="site-description motion-element" itemprop="description">一个高端大气上档次的网站（雾</p>
           </div>
 
           
-            <div class="site-state-item site-state-categories">
-              <a href="/categories">
-                <span class="site-state-item-count">3</span>
-                <span class="site-state-item-name">分类</span>
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">12</span>
+                    <span class="site-state-item-name">posts</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  <a href="/categories/index.html">
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">5</span>
+                    <span class="site-state-item-name">categories</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  <a href="/tags/index.html">
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">27</span>
+                    <span class="site-state-item-name">tags</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+            <div class="feed-link motion-element">
+              <a href="/atom.xml" rel="alternate">
+                <i class="fa fa-rss"></i>
+                RSS
               </a>
             </div>
           
 
           
-            <div class="site-state-item site-state-tags">
-              <a href="/tags">
-                <span class="site-state-item-count">21</span>
-                <span class="site-state-item-name">标签</span>
-              </a>
+            <div class="links-of-author motion-element">
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="https://github.com/KiritoA" title="GitHub &rarr; https://github.com/KiritoA" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+                </span>
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="https://twitter.com/KiritoA_TH" title="Twitter &rarr; https://twitter.com/KiritoA_TH" rel="noopener" target="_blank"><i class="fa fa-fw fa-twitter"></i>Twitter</a>
+                </span>
+              
             </div>
           
 
-        </nav>
+          
 
-        
-          <div class="feed-link motion-element">
-            <a href="/atom.xml" rel="alternate">
-              <i class="fa fa-rss"></i>
-              RSS
-            </a>
-          </div>
-        
+          
+          
+            <div class="links-of-blogroll motion-element links-of-blogroll-block">
+              <div class="links-of-blogroll-title">
+                <i class="fa  fa-fw fa-link"></i>
+                Links
+              </div>
+              <ul class="links-of-blogroll-list">
+                
+                  <li class="links-of-blogroll-item">
+                    <a href="https://yian.me/blog/" title="https://yian.me/blog/" rel="noopener" target="_blank">Y!an's Blog</a>
+                  </li>
+                
+                  <li class="links-of-blogroll-item">
+                    <a href="https://deepindream.github.io/" title="https://deepindream.github.io/" rel="noopener" target="_blank">DeepinDream's Blog</a>
+                  </li>
+                
+              </ul>
+            </div>
+          
 
-        <div class="links-of-author motion-element">
           
             
-              <span class="links-of-author-item">
-                <a href="https://github.com/KiritoA/" target="_blank" title="Github">
-                  
-                    <i class="fa fa-fw fa-globe"></i>
-                  
-                  Github
-                </a>
-              </span>
-            
-              <span class="links-of-author-item">
-                <a href="https://twitter.com/KiritoA_TH" target="_blank" title="Twitter">
-                  
-                    <i class="fa fa-fw fa-twitter"></i>
-                  
-                  Twitter
-                </a>
-              </span>
-            
           
+          
+
         </div>
-
-        
-        
-
-        
-        
-          <div class="links-of-blogroll motion-element links-of-blogroll-inline">
-            <div class="links-of-blogroll-title">
-              <i class="fa  fa-fw fa-globe"></i>
-              Links
-            </div>
-            <ul class="links-of-blogroll-list">
-              
-                <li class="links-of-blogroll-item">
-                  <a href="https://yian.me/blog/" title="Y!an's Blog" target="_blank">Y!an's Blog</a>
-                </li>
-              
-            </ul>
-          </div>
-        
-
-        
-
-
-      </section>
+      </div>
 
       
       <!--noindex-->
-        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+        <div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
           <div class="post-toc">
 
             
-              
+            
+            
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#原因分析"><span class="nav-number">1.</span> <span class="nav-text">原因分析</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#固件和环境准备"><span class="nav-number">2.</span> <span class="nav-text">固件和环境准备</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#实现"><span class="nav-number">3.</span> <span class="nav-text">实现</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#原因分析"><span class="nav-text">原因分析</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#固件和环境准备"><span class="nav-text">固件和环境准备</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#实现"><span class="nav-text">实现</span></a></li></ol></div>
             
 
           </div>
-        </section>
+        </div>
       <!--/noindex-->
+      
+
       
 
     </div>
   </aside>
+  
 
 
         
@@ -664,43 +824,61 @@ wndr4300_mtdlayout=mtdparts=ar934x-nfc:256k(u-boot)ro,256k(u-boot-env)ro,256k(ca
 
     <footer id="footer" class="footer">
       <div class="footer-inner">
-        <div class="copyright" >
-  
-  &copy;  2016 - 
-  <span itemprop="copyrightYear">2017</span>
-  <span class="with-love">
-    <i class="fa fa-"></i>
+        <div class="copyright">&copy; 2016 – <span itemprop="copyrightYear">2019</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
   </span>
   <span class="author" itemprop="copyrightHolder">KiritoA</span>
+
+  
+
+  
 </div>
 
 
-<div class="powered-by">
-  由 <a class="theme-link" href="https://hexo.io">Hexo</a> 强力驱动
-</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a></div>
 
-<div class="theme-info">
-  主题 -
-  <a class="theme-link" href="https://github.com/iissnan/hexo-theme-next">
-    NexT.Pisces
-  </a>
-</div>
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">Theme – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a></div>
+
+
 
 
         
+
+
+
+
+
+
+
 
         
       </div>
     </footer>
 
-    <div class="back-to-top">
-      <i class="fa fa-arrow-up"></i>
-    </div>
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+    
+
+    
   </div>
 
   
 
-<script type="text/javascript">
+<script>
   if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
     window.Promise = null;
   }
@@ -714,225 +892,97 @@ wndr4300_mtdlayout=mtdparts=ar934x-nfc:256k(u-boot)ro,256k(u-boot-env)ro,256k(ca
 
 
 
-  
 
 
 
-  
-  <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
-
-  
-  <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
-
-  
-  <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
-
-  
-  <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
-
-  
-  <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
-
-  
-  <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
-
-
-  
-
-
-  <script type="text/javascript" src="/js/src/utils.js?v=5.1.0"></script>
-
-  <script type="text/javascript" src="/js/src/motion.js?v=5.1.0"></script>
 
 
 
-  
-  
-
-
-  <script type="text/javascript" src="/js/src/affix.js?v=5.1.0"></script>
-
-  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.0"></script>
 
 
 
-  
-  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.0"></script>
-<script type="text/javascript" src="/js/src/post-details.js?v=5.1.0"></script>
 
 
 
-  
-
-
-  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.0"></script>
-
-
-
-  
-
-
-
-  
-
-    <script type="text/javascript">
-      var disqus_shortname = 'kiritox-blog';
-      var disqus_identifier = 'archives/flash-wndr3700v4-to-stock-firmware.html';
-
-      var disqus_title = "WNDR3700v4刷回原厂固件";
-
-
-      function run_disqus_script(disqus_script) {
-        var dsq = document.createElement('script');
-        dsq.type = 'text/javascript';
-        dsq.async = true;
-        dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
-        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
-      }
-
-      run_disqus_script('count.js');
-
-      
-        var disqus_config = function () {
-            this.page.url = disqus_url;
-            this.page.identifier = disqus_identifier;
-            this.page.title = disqus_title;
-        };
-        run_disqus_script('embed.js');
-      
-
-    </script>
-  
 
 
 
 
 
   
+  <script src="/lib/jquery/index.js?v=2.1.3"></script>
+
   
-  <script type="text/javascript">
-    // Popup Window;
-    var isfetched = false;
-    // Search DB path;
-    var search_path = "search.xml";
-    if (search_path.length == 0) {
-      search_path = "search.xml";
-    }
-    var path = "/" + search_path;
-    // monitor main search box;
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
 
-    function proceedsearch() {
-      $("body").append('<div class="popoverlay">').css('overflow', 'hidden');
-      $('.popup').toggle();
-    }
-    // search function;
-    var searchFunc = function(path, search_id, content_id) {
-      'use strict';
-      $.ajax({
-        url: path,
-        dataType: "xml",
-        async: true,
-        success: function( xmlResponse ) {
-          // get the contents from search data
-          isfetched = true;
-          $('.popup').detach().appendTo('.header-inner');
-          var datas = $( "entry", xmlResponse ).map(function() {
-            return {
-              title: $( "title", this ).text(),
-              content: $("content",this).text(),
-              url: $( "url" , this).text()
-            };
-          }).get();
-          var $input = document.getElementById(search_id);
-          var $resultContent = document.getElementById(content_id);
-          $input.addEventListener('input', function(){
-            var matchcounts = 0;
-            var str='<ul class=\"search-result-list\">';
-            var keywords = this.value.trim().toLowerCase().split(/[\s\-]+/);
-            $resultContent.innerHTML = "";
-            if (this.value.trim().length > 1) {
-              // perform local searching
-              datas.forEach(function(data) {
-                var isMatch = false;
-                var content_index = [];
-                var data_title = data.title.trim().toLowerCase();
-                var data_content = data.content.trim().replace(/<[^>]+>/g,"").toLowerCase();
-                var data_url = decodeURIComponent(data.url);
-                var index_title = -1;
-                var index_content = -1;
-                var first_occur = -1;
-                // only match artiles with not empty titles and contents
-                if(data_title != '') {
-                  keywords.forEach(function(keyword, i) {
-                    index_title = data_title.indexOf(keyword);
-                    index_content = data_content.indexOf(keyword);
-                    if( index_title >= 0 || index_content >= 0 ){
-                      isMatch = true;
-                      if (i == 0) {
-                        first_occur = index_content;
-                      }
-                    }
+  
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
 
-                  });
-                }
-                // show search results
-                if (isMatch) {
-                  matchcounts += 1;
-                  str += "<li><a href='"+ data_url +"' class='search-result-title'>"+ data_title +"</a>";
-                  var content = data.content.trim().replace(/<[^>]+>/g,"");
-                  if (first_occur >= 0) {
-                    // cut out 100 characters
-                    var start = first_occur - 20;
-                    var end = first_occur + 80;
-                    if(start < 0){
-                      start = 0;
-                    }
-                    if(start == 0){
-                      end = 50;
-                    }
-                    if(end > content.length){
-                      end = content.length;
-                    }
-                    var match_content = content.substring(start, end);
-                    // highlight all keywords
-                    keywords.forEach(function(keyword){
-                      var regS = new RegExp(keyword, "gi");
-                      match_content = match_content.replace(regS, "<b class=\"search-keyword\">"+keyword+"</b>");
-                    });
 
-                    str += "<p class=\"search-result\">" + match_content +"...</p>"
-                  }
-                  str += "</li>";
-                }
-              })};
-            str += "</ul>";
-            if (matchcounts == 0) { str = '<div id="no-result"><i class="fa fa-frown-o fa-5x" /></div>' }
-            if (keywords == "") { str = '<div id="no-result"><i class="fa fa-search fa-5x" /></div>' }
-            $resultContent.innerHTML = str;
-          });
-          proceedsearch();
-        }
-      });}
+  
 
-    // handle and trigger popup window;
-    $('.popup-trigger').click(function(e) {
-      e.stopPropagation();
-      if (isfetched == false) {
-        searchFunc(path, 'local-search-input', 'local-search-result');
-      } else {
-        proceedsearch();
-      };
-    });
 
-    $('.popup-btn-close').click(function(e){
-      $('.popup').hide();
-      $(".popoverlay").remove();
-      $('body').css('overflow', '');
-    });
-    $('.popup').click(function(e){
-      e.stopPropagation();
-    });
-  </script>
+  <script src="/js/src/utils.js?v=7.0.1"></script>
+
+  <script src="/js/src/motion.js?v=7.0.1"></script>
+
+
+
+  
+  
+
+
+  <script src="/js/src/affix.js?v=7.0.1"></script>
+
+  <script src="/js/src/schemes/pisces.js?v=7.0.1"></script>
+
+
+
+  
+  <script src="/js/src/scrollspy.js?v=7.0.1"></script>
+<script src="/js/src/post-details.js?v=7.0.1"></script>
+
+
+
+  
+
+
+  <script src="/js/src/bootstrap.js?v=7.0.1"></script>
+
+
+  
+  
+  
+  <script id="dsq-count-scr" src="https://kiritox-blog.disqus.com/count.js" async></script>
+
+
+<script>
+  var disqus_config = function() {
+    this.page.url = "https://kiritox.me/archives/flash-wndr3700v4-to-stock-firmware.html";
+    this.page.identifier = "archives/flash-wndr3700v4-to-stock-firmware.html";
+    this.page.title = 'WNDR3700v4刷回原厂固件';
+    };
+  function loadComments() {
+    var d = document, s = d.createElement('script');
+    s.src = 'https://kiritox-blog.disqus.com/embed.js';
+    s.setAttribute('data-timestamp', '' + +new Date());
+    (d.head || d.body).appendChild(s);
+  }
+  
+    loadComments();
+  
+</script>
+
+
+
+
+
+  
+
+
+  
+
+
 
 
   
@@ -943,6 +993,23 @@ wndr4300_mtdlayout=mtdparts=ar934x-nfc:256k(u-boot)ro,256k(u-boot-env)ro,256k(ca
 
   
 
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
 
 </body>
 </html>

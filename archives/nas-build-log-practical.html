@@ -1,20 +1,25 @@
-<!doctype html>
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
 
 
 
   
 
 
-<html class="theme-next pisces use-motion" lang="zh-Hans">
+<html class="theme-next pisces use-motion" lang="en">
 <head>
   <meta charset="UTF-8"/>
-<meta http-equiv="X-UA-Compatible" content="IE=edge" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
-
-
-
-<meta http-equiv="Cache-Control" content="no-transform" />
-<meta http-equiv="Cache-Control" content="no-siteapp" />
+<meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2"/>
+<meta name="theme-color" content="#222"/>
 
 
 
@@ -25,73 +30,80 @@
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2"/>
+
+<link rel="stylesheet" href="/css/main.css?v=7.0.1"/>
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.0.1">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.0.1">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.0.1">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=7.0.1" color="#222">
+
+
+
+
+
+
+
+<script id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '7.0.1',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false,"dimmer":false},
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
 
 
   
-  
-  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css" />
 
 
 
 
-  
-  
-  
-  
-
-  
-    
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-    
-    
-    <link href="//fonts.googleapis.com/css?family=Lato:300,300italic,400,400italic,700,700italic&subset=latin,latin-ext" rel="stylesheet" type="text/css">
-  
-
-
-
-
-
-
-<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
-
-<link href="/css/main.css?v=5.1.0" rel="stylesheet" type="text/css" />
-
-
-  <meta name="keywords" content="NAS,OpenMediaVault,黑群晖," />
-
-
-
-
-
-  <link rel="alternate" href="/atom.xml" title="KiritoA's Blog" type="application/atom+xml" />
-
-
-
-
-  <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico?v=5.1.0" />
-
-
-
-
-
-
-<meta name="description" content="本来题目是想写实践篇的，但是折腾一圈下来发现这应该叫折腾篇才对，因为实在是太太太。。。折腾了">
+  <meta name="description" content="本来题目是想写实践篇的，但是折腾一圈下来发现这应该叫折腾篇才对，因为实在是太太太。。。折腾了">
+<meta name="keywords" content="NAS,OpenMediaVault,黑群晖">
 <meta property="og:type" content="article">
 <meta property="og:title" content="NAS打造日志--折腾篇">
 <meta property="og:url" content="https://kiritox.me/archives/nas-build-log-practical.html">
-<meta property="og:site_name" content="KiritoA's Blog">
+<meta property="og:site_name" content="KiritoA&#39;s Blog">
 <meta property="og:description" content="本来题目是想写实践篇的，但是折腾一圈下来发现这应该叫折腾篇才对，因为实在是太太太。。。折腾了">
+<meta property="og:locale" content="en">
 <meta property="og:image" content="https://kiritoa.github.io/usr/uploads/2016/07/1099110739.png">
 <meta property="og:image" content="https://kiritoa.github.io/usr/uploads/2016/07/3779195123.jpg">
 <meta property="og:image" content="https://kiritoa.github.io/usr/uploads/2016/07/1506247690.jpg">
@@ -115,7 +127,7 @@
 <meta property="og:image" content="https://kiritoa.github.io/usr/uploads/2016/07/2391837075.png">
 <meta property="og:image" content="https://kiritoa.github.io/usr/uploads/2016/07/1024739463.png">
 <meta property="og:image" content="https://kiritoa.github.io/usr/uploads/2016/07/2335383978.png">
-<meta property="og:updated_time" content="2016-12-06T16:13:49.506Z">
+<meta property="og:updated_time" content="2019-03-17T15:53:48.576Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="NAS打造日志--折腾篇">
 <meta name="twitter:description" content="本来题目是想写实践篇的，但是折腾一圈下来发现这应该叫折腾篇才对，因为实在是太太太。。。折腾了">
@@ -123,27 +135,8 @@
 
 
 
-<script type="text/javascript" id="hexo.configurations">
-  var NexT = window.NexT || {};
-  var CONFIG = {
-    root: '/',
-    scheme: 'Pisces',
-    sidebar: {"position":"left","display":"post"},
-    fancybox: true,
-    motion: true,
-    duoshuo: {
-      userId: '0',
-      author: '博主'
-    },
-    algolia: {
-      applicationID: '',
-      apiKey: '',
-      indexName: '',
-      hits: {"per_page":10},
-      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
-    }
-  };
-</script>
+  <link rel="alternate" href="/atom.xml" title="KiritoA's Blog" type="application/atom+xml"/>
+
 
 
 
@@ -151,13 +144,13 @@
 
 
 
+<script id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
 
-
-  <title> NAS打造日志--折腾篇 | KiritoA's Blog </title>
-</head>
-
-<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
-
+  <title>NAS打造日志--折腾篇 | KiritoA's Blog</title>
   
 
 
@@ -168,122 +161,175 @@
 
 
 
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-title { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="en">
 
   
   
     
   
 
-  <div class="container one-collumn sidebar-position-left page-post-detail ">
+  <div class="container sidebar-position-left page-post-detail">
     <div class="headband"></div>
 
     <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
-      <div class="header-inner"><div class="site-meta ">
-  
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+    
 
-  <div class="custom-logo-site-title">
-    <a href="/"  class="brand" rel="start">
-      <span class="logo-line-before"><i></i></span>
-      <span class="site-title">KiritoA's Blog</span>
-      <span class="logo-line-after"><i></i></span>
-    </a>
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">KiritoA's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+    
   </div>
-  <p class="site-subtitle"></p>
+
+  <div class="site-nav-toggle">
+    <button aria-label="Toggle navigation bar">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
 </div>
 
-<div class="site-nav-toggle">
-  <button>
-    <span class="btn-bar"></span>
-    <span class="btn-bar"></span>
-    <span class="btn-bar"></span>
-  </button>
-</div>
+
 
 <nav class="site-nav">
-  
-
   
     <ul id="menu" class="menu">
       
         
-        <li class="menu-item menu-item-home">
-          <a href="/" rel="section">
-            
-              <i class="menu-item-icon fa fa-fw fa-home"></i> <br />
-            
-            首页
-          </a>
-        </li>
-      
         
-        <li class="menu-item menu-item-categories">
-          <a href="/categories" rel="section">
-            
-              <i class="menu-item-icon fa fa-fw fa-th"></i> <br />
-            
-            分类
-          </a>
-        </li>
-      
         
-        <li class="menu-item menu-item-archives">
-          <a href="/archives" rel="section">
-            
-              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />
-            
-            归档
-          </a>
-        </li>
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
       
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br/>Home</a>
+
+  </li>
         
-        <li class="menu-item menu-item-tags">
-          <a href="/tags" rel="section">
-            
-              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br />
-            
-            标签
-          </a>
-        </li>
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
       
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br/>Tags</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br/>Categories</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives menu-item-active">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br/>Archives</a>
+
+  </li>
 
       
-        <li class="menu-item menu-item-search">
-          
-            <a href="javascript:;" class="popup-trigger">
-          
-            
-              <i class="menu-item-icon fa fa-search fa-fw"></i> <br />
-            
-            搜索
-          </a>
-        </li>
       
     </ul>
   
 
   
-    <div class="site-search">
-      
-  <div class="popup">
- <span class="search-icon fa fa-search"></span>
- <input type="text" id="local-search-input">
- <div id="local-search-result"></div>
- <span class="popup-btn-close">close</span>
-</div>
 
-
-    </div>
   
 </nav>
 
 
 
- </div>
+  
+
+
+
+</div>
     </header>
+
+    
+
 
     <main id="main" class="main">
       <div class="main-inner">
         <div class="content-wrap">
+          
+            
+
+          
           <div id="content" class="content">
             
 
@@ -296,67 +342,75 @@
   
   
 
-  <article class="post post-type-normal " itemscope itemtype="http://schema.org/Article">
-  <link itemprop="mainEntityOfPage" href="https://kiritox.me/archives/nas-build-log-practical.html">
+  
 
-  <span style="display:none" itemprop="author" itemscope itemtype="http://schema.org/Person">
-    <meta itemprop="name" content="KiritoA">
-    <meta itemprop="description" content="">
-    <meta itemprop="image" content="/images/avatar.png">
-  </span>
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://kiritox.me/archives/nas-build-log-practical.html"/>
 
-  <span style="display:none" itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-    <meta itemprop="name" content="KiritoA's Blog">
-    <span style="display:none" itemprop="logo" itemscope itemtype="http://schema.org/ImageObject">
-      <img style="display:none;" itemprop="url image" alt="KiritoA's Blog" src="">
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="KiritoA"/>
+      <meta itemprop="description" content="一个高端大气上档次的网站（雾"/>
+      <meta itemprop="image" content="/images/avatar.png"/>
     </span>
-  </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="KiritoA's Blog"/>
+    </span>
 
     
       <header class="post-header">
 
         
         
-          <h1 class="post-title" itemprop="name headline">
-            
-            
-              
-                NAS打造日志--折腾篇
+          <h2 class="post-title" itemprop="name headline">NAS打造日志--折腾篇
+
               
             
-          </h1>
+          </h2>
         
 
         <div class="post-meta">
           <span class="post-time">
+
+            
+            
+            
+
             
               <span class="post-meta-item-icon">
                 <i class="fa fa-calendar-o"></i>
               </span>
-              <span class="post-meta-item-text">发表于</span>
-              <time title="Post created" itemprop="dateCreated datePublished" datetime="2016-07-17T19:09:00+08:00">
-                2016-07-17
-              </time>
-            
+              
+                <span class="post-meta-item-text">Posted on</span>
+              
 
+              
+                
+              
+
+              <time title="Created: 2016-07-17 19:09:00" itemprop="dateCreated datePublished" datetime="2016-07-17T19:09:00+08:00">2016-07-17</time>
             
 
             
           </span>
 
           
-            <span class="post-category" >
+            <span class="post-category">
+            
               <span class="post-meta-divider">|</span>
+            
               <span class="post-meta-item-icon">
                 <i class="fa fa-folder-o"></i>
               </span>
-              <span class="post-meta-item-text">分类于</span>
               
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/技术/" itemprop="url" rel="index">
-                    <span itemprop="name">技术</span>
-                  </a>
-                </span>
+                <span class="post-meta-item-text">In</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/Tech/" itemprop="url" rel="index"><span itemprop="name">Tech</span></a></span>
 
                 
                 
@@ -366,8 +420,15 @@
 
           
             
+            
+              
               <span class="post-comments-count">
                 <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+            
+                <span class="post-meta-item-text">Comments: </span>
                 <a href="/archives/nas-build-log-practical.html#comments" itemprop="discussionUrl">
                   <span class="post-comments-count disqus-comment-count" data-disqus-identifier="archives/nas-build-log-practical.html" itemprop="commentCount"></span>
                 </a>
@@ -376,8 +437,8 @@
           
 
           
-
           
+
           
 
           
@@ -388,7 +449,9 @@
       </header>
     
 
-
+    
+    
+    
     <div class="post-body" itemprop="articleBody">
 
       
@@ -410,7 +473,7 @@
 <ul>
 <li>软路由提供透明代理网络环境</li>
 </ul>
-<h2 id="硬件选型"><a href="#硬件选型" class="headerlink" title="硬件选型"></a>硬件选型</h2><p>实际开始打造之前对硬件方案进行了<a href="https://kiritoa.github.io/archives/nas-build-hardware-solution.html" target="_blank" rel="external">一些研究</a>，因为手头上有一些之前DIY剩下的零部件，包括机箱，电源，内存等等，因此本次实际打造只买了一块主板，总花费470元。</p>
+<h2 id="硬件选型"><a href="#硬件选型" class="headerlink" title="硬件选型"></a>硬件选型</h2><p>实际开始打造之前对硬件方案进行了<a href="https://kiritox.me/archives/nas-build-hardware-solution.html">一些研究</a>，因为手头上有一些之前DIY剩下的零部件，包括机箱，电源，内存等等，因此本次实际打造只买了一块主板，总花费470元。</p>
 <p>硬件配置：</p>
 <ul>
 <li>主板+CPU：ASROCK J3160M – 470元</li>
@@ -419,13 +482,13 @@
 <li>电源：酷冷至尊战斧二代400W电源</li>
 <li>硬盘：1x希捷1TB + 1x希捷250GB</li>
 </ul>
-<p>曾被AMD坑过的我现在买新CPU都是首选Intel，因此根据Intel最新发布的<a href="http://www.intel.com/content/www/us/en/processors/public-roadmap-article.html" title="Roadmap" target="_blank" rel="external">Roadmap</a>选择了 <a href="http://ark.intel.com/products/91533/Intel-Celeron-Processor-J3160-2M-Cache-up-to-2_24-GHz" target="_blank" rel="external">Intel Celeron J3160</a>，J3160是Intel 16’Q1新发布的一款超低功耗SoC CPU，TDP仅为6W，支持VT-x、AES等，性能一般但已经可以满足基本NAS需求，做软路由也相当不错。考虑到要低功耗的原因没有选G1840, G4400这些型号，虽然总有人说功耗也高不了多少不要迷恋低功耗之类的，但是这两个CPU idle功率要高10W左右，有负载时就更高了。而J3160有负载时功耗也仅在15W-20W之间。更何况品牌NAS也都是有用J3160，J1900，N3150这些低功耗U。</p>
+<p>曾被AMD坑过的我现在买新CPU都是首选Intel，因此根据Intel最新发布的<a href="http://www.intel.com/content/www/us/en/processors/public-roadmap-article.html" title="Roadmap" target="_blank" rel="noopener">Roadmap</a>选择了 <a href="http://ark.intel.com/products/91533/Intel-Celeron-Processor-J3160-2M-Cache-up-to-2_24-GHz" target="_blank" rel="noopener">Intel Celeron J3160</a>，J3160是Intel 16’Q1新发布的一款超低功耗SoC CPU，TDP仅为6W，支持VT-x、AES等，性能一般但已经可以满足基本NAS需求，做软路由也相当不错。考虑到要低功耗的原因没有选G1840, G4400这些型号，虽然总有人说功耗也高不了多少不要迷恋低功耗之类的，但是这两个CPU idle功率要高10W左右，有负载时就更高了。而J3160有负载时功耗也仅在15W-20W之间。更何况品牌NAS也都是有用J3160，J1900，N3150这些低功耗U。</p>
 <p><img src="https://kiritoa.github.io/usr/uploads/2016/07/1099110739.png" alt="Screenshot 2016-07-13 20.46.55.png"></p>
 <p>个人认为CPU选择要根据实际出发不要盲目跟风，如果没有虚拟化、HTPC、实时转码、编码、渲染。。。之类的需求高性能的CPU也是浪费。</p>
-<p>主板方面选择的是华擎的<a href="http://www.asrock.com/mb/Intel/J3160M/index.asp" target="_blank" rel="external">J3160M</a>，M-ATX规格主板，2xSATA3接口，CPU被动散热无需风扇。选择它主要是因为手头上有多余的台式DDR3内存可以用上，而且也有不错的扩展性（3xPCI-E Slot），不过SATA接口略不足，需要加SATA扩展卡扩展。</p>
+<p>主板方面选择的是华擎的<a href="http://www.asrock.com/mb/Intel/J3160M/index.asp" target="_blank" rel="noopener">J3160M</a>，M-ATX规格主板，2xSATA3接口，CPU被动散热无需风扇。选择它主要是因为手头上有多余的台式DDR3内存可以用上，而且也有不错的扩展性（3xPCI-E Slot），不过SATA接口略不足，需要加SATA扩展卡扩展。</p>
 <p><img src="https://kiritoa.github.io/usr/uploads/2016/07/3779195123.jpg" alt="J3160M(L2).jpg"></p>
 <p><img src="https://kiritoa.github.io/usr/uploads/2016/07/1506247690.jpg" alt="J3160M(L5).jpg"></p>
-<p>而ITX版本<a href="http://www.asrock.com/mb/Intel/J3160-ITX/index.asp" target="_blank" rel="external">华擎J3160-ITX</a>提供4xSATA3，1xPCI-E Slot + 1x Mini-PCIE Slot，使用笔记本DDR3/DDR3L内存，如果对体积有需求直接考虑ITX板。如果想拓展SATA口可以买Mini-PCIE插槽的扩展卡，可额外提供2个SATA接口。</p>
+<p>而ITX版本<a href="http://www.asrock.com/mb/Intel/J3160-ITX/index.asp" target="_blank" rel="noopener">华擎J3160-ITX</a>提供4xSATA3，1xPCI-E Slot + 1x Mini-PCIE Slot，使用笔记本DDR3/DDR3L内存，如果对体积有需求直接考虑ITX板。如果想拓展SATA口可以买Mini-PCIE插槽的扩展卡，可额外提供2个SATA接口。</p>
 <p>内存8G的确是有点过剩了，如果不上虚拟化的话迟些出掉一条或者装到另一台电脑上。</p>
 <p>硬盘都是之前留下来的东西，虽然说希捷坏盘率高什么的，但两块硬盘用了这么多年都还健在，也没看到警告信息，可能是运行时间不长的原因吧(◔౪◔)（两硬盘在线时间均为3000小时左右）。不过迟些会上WD的红盘。</p>
 <p>实际测试了一下功耗，总结如下：</p>
@@ -456,9 +519,9 @@
 </tbody>
 </table>
 <hr>
-<h2 id="软件方案"><a href="#软件方案" class="headerlink" title="软件方案"></a>软件方案</h2><p>比较知名的免费NAS系统有：FreeNAS、NAS4Free、OpenMediaVault（详细介绍可以<a href="http://blog.brianmoses.net/2015/04/diy-nas-software-roundup.html" target="_blank" rel="external">看这里</a>）其他系统方案还有黑群晖和Windows Server。</p>
+<h2 id="软件方案"><a href="#软件方案" class="headerlink" title="软件方案"></a>软件方案</h2><p>比较知名的免费NAS系统有：FreeNAS、NAS4Free、OpenMediaVault（详细介绍可以<a href="http://blog.brianmoses.net/2015/04/diy-nas-software-roundup.html" target="_blank" rel="noopener">看这里</a>）其他系统方案还有黑群晖和Windows Server。</p>
 <blockquote>
-<p>FreeNAS、OpenMediaVault、NAS4Free关系：Olivier Cochard-Labbe在2005年创建了FreeNAS项目，后Volker Theile加入该项目作为核心开发人员；2009年12月Olivier Cochard-Labbe发表声明停止为FreeNAS 0.7版本开发新功能后，Volker Theile创建了基于Debian Linux的OpenMediaVault项目，并采用GPLv3授权；iXsystems收购FreeNAS后重写了网页框架和构架在2011年发布了全新的FreeNAS 8版本；2011年其余开发者基于FreeNAS 0.7开发了分支并重新命名为NAS4Free。<br><em>引用:<a href="http://songming.me/openmediavault-setup.html" target="_blank" rel="external">http://songming.me/openmediavault-setup.html</a></em></p>
+<p>FreeNAS、OpenMediaVault、NAS4Free关系：Olivier Cochard-Labbe在2005年创建了FreeNAS项目，后Volker Theile加入该项目作为核心开发人员；2009年12月Olivier Cochard-Labbe发表声明停止为FreeNAS 0.7版本开发新功能后，Volker Theile创建了基于Debian Linux的OpenMediaVault项目，并采用GPLv3授权；iXsystems收购FreeNAS后重写了网页框架和构架在2011年发布了全新的FreeNAS 8版本；2011年其余开发者基于FreeNAS 0.7开发了分支并重新命名为NAS4Free。<br><em>引用:<a href="http://songming.me/openmediavault-setup.html" target="_blank" rel="noopener">http://songming.me/openmediavault-setup.html</a></em></p>
 </blockquote>
 <h3 id="FreeNAS、NAS4Free"><a href="#FreeNAS、NAS4Free" class="headerlink" title="FreeNAS、NAS4Free"></a>FreeNAS、NAS4Free</h3><p>这两个系统是基于FreeBSD开发，使用ZFS分区，对内存需求比较高，官方强烈推荐使用ECC内存，而且至少需要8GB，虽然这两个系统相当不错，但本次计划没有ECC内存因此只能排除这两个方案。</p>
 <p><img src="https://kiritoa.github.io/usr/uploads/2016/07/2782324303.png" alt="910gui.png"></p>
@@ -469,7 +532,7 @@
 <hr>
 <h2 id="折腾篇"><a href="#折腾篇" class="headerlink" title="折腾篇"></a>折腾篇</h2><h3 id="OpenMediaVault初体验"><a href="#OpenMediaVault初体验" class="headerlink" title="OpenMediaVault初体验"></a>OpenMediaVault初体验</h3><p>OMV总的来说也算是一个不错的系统，对于熟悉Linux的人来说实在是太方便，但是官方给出了这么一个需求：</p>
 <blockquote>
-<p><strong>System Drive</strong><br>The whole disc will be occupied by the System and swap space, so size doesn’t matter so much. Data storage on the system disc is not supported.<br>Spinning Harddisk, SSD, Disk-on-Module, CompactFlash or USB thumb drive type drives can be used as System Drive.<br><strong>If you use a Flash Drive, select one with static wear leveling, without it the drive will have a very short lifetime.</strong> It is also recommended to activate the Flash memory Plugin: (see Plug-ins) The entire disk is used as system disk. This disk can not be used to store user data.<br><em><a href="http://wiki.openmediavault.org/index.php?title=Prerequisites" target="_blank" rel="external">http://wiki.openmediavault.org/index.php?title=Prerequisites</a></em></p>
+<p><strong>System Drive</strong><br>The whole disc will be occupied by the System and swap space, so size doesn’t matter so much. Data storage on the system disc is not supported.<br>Spinning Harddisk, SSD, Disk-on-Module, CompactFlash or USB thumb drive type drives can be used as System Drive.<br><strong>If you use a Flash Drive, select one with static wear leveling, without it the drive will have a very short lifetime.</strong> It is also recommended to activate the Flash memory Plugin: (see Plug-ins) The entire disk is used as system disk. This disk can not be used to store user data.<br><em><a href="http://wiki.openmediavault.org/index.php?title=Prerequisites" target="_blank" rel="noopener">http://wiki.openmediavault.org/index.php?title=Prerequisites</a></em></p>
 </blockquote>
 <p>大致的意思就是，如果你使用Flash储存设备做系统盘的话，要找那些静态损耗均衡（就是类似SSD Trim技术的意思）的设备，不然的话很快就会完蛋，所以一定要找长擦写寿命的。使用SSD是个比较好的选择，系统安装好后虽然会把整个硬盘占用了，但是可以自行分区腾出空间供作储存。但是手头上没有SSD硬盘空闲，电商逛了一圈现在一线大厂SSD 60G价格跟128/120G的都差不多价格，便宜的SSD又怕出问题。偶然看到有SLC U盘这么一样东西，据说寿命比普通U盘都要长，于是在淘宝找了个59包邮的SLC U盘，本来想着系统盘读写量又不是很大找个便宜点的U盘就算了（据说都是小作坊产品），而且这个是SLC储存理论上寿命也是可以的(Flag)。</p>
 <p><img src="https://kiritoa.github.io/usr/uploads/2016/07/3053182115.jpg" alt="T1YWYhXj8eXXc3ZFI2_043031.jpg_430x430q90.jpg"></p>
@@ -491,7 +554,7 @@
 <hr>
 <p>Round5：手头没SSD始终比较麻烦，能安装到U盘的NAS系统还有FreeNAS、NAS4Free，虽然是有8G内存达到要求，但没有ECC始终是一个风险，因为ZFS文件系统极度依赖内存的可靠性（数据无价）。看看手头上剩下的选择，虽然有些无奈，但只有黑群晖可以选择了。</p>
 <h3 id="黑群晖折腾篇"><a href="#黑群晖折腾篇" class="headerlink" title="黑群晖折腾篇"></a>黑群晖折腾篇</h3><p>群晖的系统都会在每一块硬盘安装一份，而不是安装在U盘，U盘只会在开机做引导作用，至少不会那么容易被玩坏。。</p>
-<p>Round6：黑群晖安装教程可以参考这个<a href="http://www.nasyun.com/thread-24296-1-1.html" target="_blank" rel="external">帖子</a>，不过建议黑群晖版本去官网找个新版本些的，<a href="http://xpenology.me/downloads/" target="_blank" rel="external">XPEnology黑群晖官网下载</a>。</p>
+<p>Round6：黑群晖安装教程可以参考这个<a href="http://www.nasyun.com/thread-24296-1-1.html" target="_blank" rel="noopener">帖子</a>，不过建议黑群晖版本去官网找个新版本些的，<a href="http://xpenology.me/downloads/" target="_blank" rel="noopener">XPEnology黑群晖官网下载</a>。</p>
 <p>按照教程修改引导镜像，写入U盘，第一次引导时要在启动菜单选择Install/Upgrade一项，进行群晖系统的安装。</p>
 <p>使用Synology Assistant很快就可以找到NAS的机器</p>
 <p><img src="https://kiritoa.github.io/usr/uploads/2016/07/3848539345.png" alt="Untitled.png"></p>
@@ -590,7 +653,7 @@ Something wicked happened resolving &apos;packages.openmediavault.org:http&apos;
 </ul>
 <p>远程下载Linux下的解决方案有迅雷Linux版<strong>xware</strong>，在OMV安装配置略麻烦，而且开启迅雷后所有硬盘无法休眠。由于目前没有24小时下载的需求，以后有需要再进一步研究。</p>
 <p>软路由本来是打算在Virtualbox安装Openwrt，用一只无线网卡做AP。但配置起来比有线网卡要麻烦得多，初始化配置需要有线网卡，只好待有线网卡部署到位再进行配置。</p>
-<h2 id="附录：NAS系统组合方案"><a href="#附录：NAS系统组合方案" class="headerlink" title="附录：NAS系统组合方案"></a>附录：NAS系统组合方案</h2><p>关于NAS安装系统的方案，知乎上有一个问题“<a href="https://www.zhihu.com/question/21359049" target="_blank" rel="external">自己家里搭建NAS服务器有什么好方案</a>”推荐看一看，其中答主<strong>MarKAde</strong>的总结比较好，简单归纳为以下几种：</p>
+<h2 id="附录：NAS系统组合方案"><a href="#附录：NAS系统组合方案" class="headerlink" title="附录：NAS系统组合方案"></a>附录：NAS系统组合方案</h2><p>关于NAS安装系统的方案，知乎上有一个问题“<a href="https://www.zhihu.com/question/21359049" target="_blank" rel="noopener">自己家里搭建NAS服务器有什么好方案</a>”推荐看一看，其中答主<strong>MarKAde</strong>的总结比较好，简单归纳为以下几种：</p>
 <ol>
 <li>NAS单系统</li>
 <li>Windows+DSM双系统，DSM作为主要存储、共享系统</li>
@@ -605,20 +668,20 @@ Something wicked happened resolving &apos;packages.openmediavault.org:http&apos;
       
     </div>
 
-    <div>
-      
-        
+    
 
-      
-    </div>
+    
+    
+    
 
-    <div>
-      
-        
+    
 
+    
       
-    </div>
+    
+    
 
+    
 
     <footer class="post-footer">
       
@@ -631,6 +694,10 @@ Something wicked happened resolving &apos;packages.openmediavault.org:http&apos;
             <a href="/tags/黑群晖/" rel="tag"># 黑群晖</a>
           
         </div>
+      
+
+      
+      
       
 
       
@@ -658,31 +725,28 @@ Something wicked happened resolving &apos;packages.openmediavault.org:http&apos;
       
       
     </footer>
+  </div>
+  
+  
+  
   </article>
 
 
-
-    <div class="post-spread">
-      
-    </div>
   </div>
 
 
           </div>
           
 
-
-          
-  <div class="comments" id="comments">
-    
+  
+    <div class="comments" id="comments">
       <div id="disqus_thread">
-        <noscript>
-          Please enable JavaScript to view the
-          <a href="//disqus.com/?ref_noscript">comments powered by Disqus.</a>
-        </noscript>
+        <noscript>Please enable JavaScript to view the comments powered by Disqus.</noscript>
       </div>
-    
-  </div>
+    </div>
+
+  
+
 
 
         </div>
@@ -704,129 +768,224 @@ Something wicked happened resolving &apos;packages.openmediavault.org:http&apos;
 
       
         <ul class="sidebar-nav motion-element">
-          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap" >
-            文章目录
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            Table of Contents
           </li>
-          <li class="sidebar-nav-overview" data-target="site-overview">
-            站点概览
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            Overview
           </li>
         </ul>
       
 
-      <section class="site-overview sidebar-panel">
-        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
-          <img class="site-author-image" itemprop="image"
-               src="/images/avatar.png"
-               alt="KiritoA" />
-          <p class="site-author-name" itemprop="name">KiritoA</p>
-          <p class="site-description motion-element" itemprop="description">一个高端大气上档次的网站（雾</p>
-        </div>
-        <nav class="site-state motion-element">
-          <div class="site-state-item site-state-posts">
-            <a href="/archives">
-              <span class="site-state-item-count">10</span>
-              <span class="site-state-item-name">日志</span>
-            </a>
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image"
+                src="/images/avatar.png"
+                alt="KiritoA"/>
+            
+              <p class="site-author-name" itemprop="name">KiritoA</p>
+              <p class="site-description motion-element" itemprop="description">一个高端大气上档次的网站（雾</p>
           </div>
 
           
-            <div class="site-state-item site-state-categories">
-              <a href="/categories">
-                <span class="site-state-item-count">3</span>
-                <span class="site-state-item-name">分类</span>
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">12</span>
+                    <span class="site-state-item-name">posts</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  <a href="/categories/index.html">
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">5</span>
+                    <span class="site-state-item-name">categories</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  <a href="/tags/index.html">
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">27</span>
+                    <span class="site-state-item-name">tags</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+            <div class="feed-link motion-element">
+              <a href="/atom.xml" rel="alternate">
+                <i class="fa fa-rss"></i>
+                RSS
               </a>
             </div>
           
 
           
-            <div class="site-state-item site-state-tags">
-              <a href="/tags">
-                <span class="site-state-item-count">21</span>
-                <span class="site-state-item-name">标签</span>
-              </a>
+            <div class="links-of-author motion-element">
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="https://github.com/KiritoA" title="GitHub &rarr; https://github.com/KiritoA" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+                </span>
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="https://twitter.com/KiritoA_TH" title="Twitter &rarr; https://twitter.com/KiritoA_TH" rel="noopener" target="_blank"><i class="fa fa-fw fa-twitter"></i>Twitter</a>
+                </span>
+              
             </div>
           
 
-        </nav>
+          
 
-        
-          <div class="feed-link motion-element">
-            <a href="/atom.xml" rel="alternate">
-              <i class="fa fa-rss"></i>
-              RSS
-            </a>
-          </div>
-        
+          
+          
+            <div class="links-of-blogroll motion-element links-of-blogroll-block">
+              <div class="links-of-blogroll-title">
+                <i class="fa  fa-fw fa-link"></i>
+                Links
+              </div>
+              <ul class="links-of-blogroll-list">
+                
+                  <li class="links-of-blogroll-item">
+                    <a href="https://yian.me/blog/" title="https://yian.me/blog/" rel="noopener" target="_blank">Y!an's Blog</a>
+                  </li>
+                
+                  <li class="links-of-blogroll-item">
+                    <a href="https://deepindream.github.io/" title="https://deepindream.github.io/" rel="noopener" target="_blank">DeepinDream's Blog</a>
+                  </li>
+                
+              </ul>
+            </div>
+          
 
-        <div class="links-of-author motion-element">
           
             
-              <span class="links-of-author-item">
-                <a href="https://github.com/KiritoA/" target="_blank" title="Github">
-                  
-                    <i class="fa fa-fw fa-globe"></i>
-                  
-                  Github
-                </a>
-              </span>
-            
-              <span class="links-of-author-item">
-                <a href="https://twitter.com/KiritoA_TH" target="_blank" title="Twitter">
-                  
-                    <i class="fa fa-fw fa-twitter"></i>
-                  
-                  Twitter
-                </a>
-              </span>
-            
           
+          
+
         </div>
-
-        
-        
-
-        
-        
-          <div class="links-of-blogroll motion-element links-of-blogroll-inline">
-            <div class="links-of-blogroll-title">
-              <i class="fa  fa-fw fa-globe"></i>
-              Links
-            </div>
-            <ul class="links-of-blogroll-list">
-              
-                <li class="links-of-blogroll-item">
-                  <a href="https://yian.me/blog/" title="Y!an's Blog" target="_blank">Y!an's Blog</a>
-                </li>
-              
-            </ul>
-          </div>
-        
-
-        
-
-
-      </section>
+      </div>
 
       
       <!--noindex-->
-        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+        <div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
           <div class="post-toc">
 
             
-              
+            
+            
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#需求分析"><span class="nav-number">1.</span> <span class="nav-text">需求分析</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#硬件选型"><span class="nav-number">2.</span> <span class="nav-text">硬件选型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#软件方案"><span class="nav-number">3.</span> <span class="nav-text">软件方案</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#FreeNAS、NAS4Free"><span class="nav-number">3.1.</span> <span class="nav-text">FreeNAS、NAS4Free</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#OpenMediaVault"><span class="nav-number">3.2.</span> <span class="nav-text">OpenMediaVault</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#黑群晖"><span class="nav-number">3.3.</span> <span class="nav-text">黑群晖</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Windows-Server-2012-R2-Windows-10"><span class="nav-number">3.4.</span> <span class="nav-text">Windows Server 2012 R2 / Windows 10</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#折腾篇"><span class="nav-number">4.</span> <span class="nav-text">折腾篇</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#OpenMediaVault初体验"><span class="nav-number">4.1.</span> <span class="nav-text">OpenMediaVault初体验</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#黑群晖折腾篇"><span class="nav-number">4.2.</span> <span class="nav-text">黑群晖折腾篇</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#OpenMediaVault·续"><span class="nav-number">4.3.</span> <span class="nav-text">OpenMediaVault·续</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#速度实测"><span class="nav-number">4.4.</span> <span class="nav-text">速度实测</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#后记"><span class="nav-number">5.</span> <span class="nav-text">后记</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#附录：NAS系统组合方案"><span class="nav-number">6.</span> <span class="nav-text">附录：NAS系统组合方案</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#需求分析"><span class="nav-text">需求分析</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#硬件选型"><span class="nav-text">硬件选型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#软件方案"><span class="nav-text">软件方案</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#FreeNAS、NAS4Free"><span class="nav-text">FreeNAS、NAS4Free</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#OpenMediaVault"><span class="nav-text">OpenMediaVault</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#黑群晖"><span class="nav-text">黑群晖</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Windows-Server-2012-R2-Windows-10"><span class="nav-text">Windows Server 2012 R2 / Windows 10</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#折腾篇"><span class="nav-text">折腾篇</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#OpenMediaVault初体验"><span class="nav-text">OpenMediaVault初体验</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#黑群晖折腾篇"><span class="nav-text">黑群晖折腾篇</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#OpenMediaVault·续"><span class="nav-text">OpenMediaVault·续</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#速度实测"><span class="nav-text">速度实测</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#后记"><span class="nav-text">后记</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#附录：NAS系统组合方案"><span class="nav-text">附录：NAS系统组合方案</span></a></li></ol></div>
             
 
           </div>
-        </section>
+        </div>
       <!--/noindex-->
+      
+
       
 
     </div>
   </aside>
+  
 
 
         
@@ -835,43 +994,61 @@ Something wicked happened resolving &apos;packages.openmediavault.org:http&apos;
 
     <footer id="footer" class="footer">
       <div class="footer-inner">
-        <div class="copyright" >
-  
-  &copy;  2016 - 
-  <span itemprop="copyrightYear">2017</span>
-  <span class="with-love">
-    <i class="fa fa-"></i>
+        <div class="copyright">&copy; 2016 – <span itemprop="copyrightYear">2019</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
   </span>
   <span class="author" itemprop="copyrightHolder">KiritoA</span>
+
+  
+
+  
 </div>
 
 
-<div class="powered-by">
-  由 <a class="theme-link" href="https://hexo.io">Hexo</a> 强力驱动
-</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a></div>
 
-<div class="theme-info">
-  主题 -
-  <a class="theme-link" href="https://github.com/iissnan/hexo-theme-next">
-    NexT.Pisces
-  </a>
-</div>
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">Theme – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a></div>
+
+
 
 
         
+
+
+
+
+
+
+
 
         
       </div>
     </footer>
 
-    <div class="back-to-top">
-      <i class="fa fa-arrow-up"></i>
-    </div>
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+    
+
+    
   </div>
 
   
 
-<script type="text/javascript">
+<script>
   if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
     window.Promise = null;
   }
@@ -885,225 +1062,97 @@ Something wicked happened resolving &apos;packages.openmediavault.org:http&apos;
 
 
 
-  
 
 
 
-  
-  <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
-
-  
-  <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
-
-  
-  <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
-
-  
-  <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
-
-  
-  <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
-
-  
-  <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
-
-
-  
-
-
-  <script type="text/javascript" src="/js/src/utils.js?v=5.1.0"></script>
-
-  <script type="text/javascript" src="/js/src/motion.js?v=5.1.0"></script>
 
 
 
-  
-  
-
-
-  <script type="text/javascript" src="/js/src/affix.js?v=5.1.0"></script>
-
-  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.0"></script>
 
 
 
-  
-  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.0"></script>
-<script type="text/javascript" src="/js/src/post-details.js?v=5.1.0"></script>
 
 
 
-  
-
-
-  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.0"></script>
-
-
-
-  
-
-
-
-  
-
-    <script type="text/javascript">
-      var disqus_shortname = 'kiritox-blog';
-      var disqus_identifier = 'archives/nas-build-log-practical.html';
-
-      var disqus_title = "NAS打造日志--折腾篇";
-
-
-      function run_disqus_script(disqus_script) {
-        var dsq = document.createElement('script');
-        dsq.type = 'text/javascript';
-        dsq.async = true;
-        dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
-        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
-      }
-
-      run_disqus_script('count.js');
-
-      
-        var disqus_config = function () {
-            this.page.url = disqus_url;
-            this.page.identifier = disqus_identifier;
-            this.page.title = disqus_title;
-        };
-        run_disqus_script('embed.js');
-      
-
-    </script>
-  
 
 
 
 
 
   
+  <script src="/lib/jquery/index.js?v=2.1.3"></script>
+
   
-  <script type="text/javascript">
-    // Popup Window;
-    var isfetched = false;
-    // Search DB path;
-    var search_path = "search.xml";
-    if (search_path.length == 0) {
-      search_path = "search.xml";
-    }
-    var path = "/" + search_path;
-    // monitor main search box;
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
 
-    function proceedsearch() {
-      $("body").append('<div class="popoverlay">').css('overflow', 'hidden');
-      $('.popup').toggle();
-    }
-    // search function;
-    var searchFunc = function(path, search_id, content_id) {
-      'use strict';
-      $.ajax({
-        url: path,
-        dataType: "xml",
-        async: true,
-        success: function( xmlResponse ) {
-          // get the contents from search data
-          isfetched = true;
-          $('.popup').detach().appendTo('.header-inner');
-          var datas = $( "entry", xmlResponse ).map(function() {
-            return {
-              title: $( "title", this ).text(),
-              content: $("content",this).text(),
-              url: $( "url" , this).text()
-            };
-          }).get();
-          var $input = document.getElementById(search_id);
-          var $resultContent = document.getElementById(content_id);
-          $input.addEventListener('input', function(){
-            var matchcounts = 0;
-            var str='<ul class=\"search-result-list\">';
-            var keywords = this.value.trim().toLowerCase().split(/[\s\-]+/);
-            $resultContent.innerHTML = "";
-            if (this.value.trim().length > 1) {
-              // perform local searching
-              datas.forEach(function(data) {
-                var isMatch = false;
-                var content_index = [];
-                var data_title = data.title.trim().toLowerCase();
-                var data_content = data.content.trim().replace(/<[^>]+>/g,"").toLowerCase();
-                var data_url = decodeURIComponent(data.url);
-                var index_title = -1;
-                var index_content = -1;
-                var first_occur = -1;
-                // only match artiles with not empty titles and contents
-                if(data_title != '') {
-                  keywords.forEach(function(keyword, i) {
-                    index_title = data_title.indexOf(keyword);
-                    index_content = data_content.indexOf(keyword);
-                    if( index_title >= 0 || index_content >= 0 ){
-                      isMatch = true;
-                      if (i == 0) {
-                        first_occur = index_content;
-                      }
-                    }
+  
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
 
-                  });
-                }
-                // show search results
-                if (isMatch) {
-                  matchcounts += 1;
-                  str += "<li><a href='"+ data_url +"' class='search-result-title'>"+ data_title +"</a>";
-                  var content = data.content.trim().replace(/<[^>]+>/g,"");
-                  if (first_occur >= 0) {
-                    // cut out 100 characters
-                    var start = first_occur - 20;
-                    var end = first_occur + 80;
-                    if(start < 0){
-                      start = 0;
-                    }
-                    if(start == 0){
-                      end = 50;
-                    }
-                    if(end > content.length){
-                      end = content.length;
-                    }
-                    var match_content = content.substring(start, end);
-                    // highlight all keywords
-                    keywords.forEach(function(keyword){
-                      var regS = new RegExp(keyword, "gi");
-                      match_content = match_content.replace(regS, "<b class=\"search-keyword\">"+keyword+"</b>");
-                    });
 
-                    str += "<p class=\"search-result\">" + match_content +"...</p>"
-                  }
-                  str += "</li>";
-                }
-              })};
-            str += "</ul>";
-            if (matchcounts == 0) { str = '<div id="no-result"><i class="fa fa-frown-o fa-5x" /></div>' }
-            if (keywords == "") { str = '<div id="no-result"><i class="fa fa-search fa-5x" /></div>' }
-            $resultContent.innerHTML = str;
-          });
-          proceedsearch();
-        }
-      });}
+  
 
-    // handle and trigger popup window;
-    $('.popup-trigger').click(function(e) {
-      e.stopPropagation();
-      if (isfetched == false) {
-        searchFunc(path, 'local-search-input', 'local-search-result');
-      } else {
-        proceedsearch();
-      };
-    });
 
-    $('.popup-btn-close').click(function(e){
-      $('.popup').hide();
-      $(".popoverlay").remove();
-      $('body').css('overflow', '');
-    });
-    $('.popup').click(function(e){
-      e.stopPropagation();
-    });
-  </script>
+  <script src="/js/src/utils.js?v=7.0.1"></script>
+
+  <script src="/js/src/motion.js?v=7.0.1"></script>
+
+
+
+  
+  
+
+
+  <script src="/js/src/affix.js?v=7.0.1"></script>
+
+  <script src="/js/src/schemes/pisces.js?v=7.0.1"></script>
+
+
+
+  
+  <script src="/js/src/scrollspy.js?v=7.0.1"></script>
+<script src="/js/src/post-details.js?v=7.0.1"></script>
+
+
+
+  
+
+
+  <script src="/js/src/bootstrap.js?v=7.0.1"></script>
+
+
+  
+  
+  
+  <script id="dsq-count-scr" src="https://kiritox-blog.disqus.com/count.js" async></script>
+
+
+<script>
+  var disqus_config = function() {
+    this.page.url = "https://kiritox.me/archives/nas-build-log-practical.html";
+    this.page.identifier = "archives/nas-build-log-practical.html";
+    this.page.title = 'NAS打造日志--折腾篇';
+    };
+  function loadComments() {
+    var d = document, s = d.createElement('script');
+    s.src = 'https://kiritox-blog.disqus.com/embed.js';
+    s.setAttribute('data-timestamp', '' + +new Date());
+    (d.head || d.body).appendChild(s);
+  }
+  
+    loadComments();
+  
+</script>
+
+
+
+
+
+  
+
+
+  
+
+
 
 
   
@@ -1114,6 +1163,23 @@ Something wicked happened resolving &apos;packages.openmediavault.org:http&apos;
 
   
 
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
 
 </body>
 </html>

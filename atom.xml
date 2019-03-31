@@ -5,7 +5,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="https://kiritox.me/"/>
-  <updated>2017-03-25T15:27:08.029Z</updated>
+  <updated>2019-03-31T10:02:11.268Z</updated>
   <id>https://kiritox.me/</id>
   
   <author>
@@ -16,19 +16,128 @@
   <generator uri="http://hexo.io/">Hexo</generator>
   
   <entry>
+    <title>Shutdown RabbitMQ consumer gracefully</title>
+    <link href="https://kiritox.me/archives/shutdown-rabbitmq-consumer-gracefully.html"/>
+    <id>https://kiritox.me/archives/shutdown-rabbitmq-consumer-gracefully.html</id>
+    <published>2019-03-31T08:06:00.000Z</published>
+    <updated>2019-03-31T10:02:11.268Z</updated>
+    
+    <content type="html"><![CDATA[<p>Recently, I need to implement graceful shutdown feature in a message queue consumer handling a large number of transactions in production that can’t be terminated immediately by a simple kill command. Implementation was tricky, though, it’s a great chance to solid my concurrent programming foundation.</p>
+<a id="more"></a>
+<h2 id="Theory"><a href="#Theory" class="headerlink" title="Theory"></a>Theory</h2><p>So the basic idea is to utilize Unix (Unix-like, and POSIX-compliant) signal, a form of IPC (Inter-process communication). User can notify the consumer by the <code>signal()</code> system call from other processes or command <code>kill [PID]</code>. By default,  <code>kill</code> command sends <code>SIGTERM</code>, the signal causing program termination, to the target. We just follow the convention.</p>
+<p>PHP has a <a href="http://php.net/manual/en/book.pcntl.php" target="_blank" rel="noopener">PCNTL extension</a> to manipulate signals. The thought of implementation is to preinstall a signal handler which set the global flag, then free resources and exit after the flag was detected by main loop.</p>
+<p>The difficulty here is that, system-level signals would interrupt normal execution of current process, which continues after the signal handler returns. The concurrent execution flow could result in issues such as synchronization and race condition. The buggy code might affect the system ferociously after a long uptime.</p>
+<p>A fairly straightforward and simple code is shown below:</p>
+<h2 id="Version-1"><a href="#Version-1" class="headerlink" title="Version 1"></a>Version 1</h2><figure class="highlight php"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div></pre></td><td class="code"><pre><div class="line">$running = <span class="keyword">true</span>;</div><div class="line"></div><div class="line">$connection = <span class="keyword">new</span> AMQPStreamConnection(...);</div><div class="line">$channel = $connection-&gt;channel();</div><div class="line"></div><div class="line">$callback = <span class="function"><span class="keyword">function</span> <span class="params">($message)</span> </span>&#123;</div><div class="line">    pcntl_sigprocmask(SIG_BLOCK, [SIGTERM]);</div><div class="line"></div><div class="line">    <span class="comment">// Critical section entry</span></div><div class="line">    <span class="comment">// ...</span></div><div class="line">    <span class="comment">// Critical section exit</span></div><div class="line"></div><div class="line">    pcntl_sigprocmask(SIG_UNBLOCK, [SIGTERM]);</div><div class="line">    pcntl_signal_dispatch();</div><div class="line">&#125;;</div><div class="line"></div><div class="line"><span class="comment">// Initialization code</span></div><div class="line"><span class="comment">// ...</span></div><div class="line">$channel-&gt;basic_consume(..., $callback);</div><div class="line"></div><div class="line">$signalHandler = <span class="function"><span class="keyword">function</span> <span class="params">($signo)</span> <span class="title">use</span> <span class="params">(&amp;$running)</span> </span>&#123;</div><div class="line">    $running = <span class="keyword">false</span>;</div><div class="line">    <span class="keyword">echo</span> <span class="string">"Received SIGTERM signal\n"</span>;</div><div class="line">&#125;;</div><div class="line"></div><div class="line"><span class="comment">// Install signal handler</span></div><div class="line">pcntl_signal(SIGTERM, $signalHandler);</div><div class="line"></div><div class="line"><span class="keyword">while</span> (count($channel-&gt;callbacks) &amp;&amp; $running) &#123;</div><div class="line">    $channel-&gt;wait();</div><div class="line">    pcntl_signal_dispatch();</div><div class="line">&#125;</div><div class="line"></div><div class="line"><span class="comment">// Restore signal handler to avoid unexpected interruption</span></div><div class="line">pcntl_signal(SIGTERM, SIG_DFL);</div><div class="line"></div><div class="line">$channel-&gt;close();</div><div class="line">$connection-&gt;close();</div></pre></td></tr></table></figure>
+<p>The callback function calls <code>pcntl_sigprocmask()</code> to disable all interrupts, or just <code>SIGTERM</code> (depends on scenes) during the critical section, and re-enable interrupts after that. This procedure avoids the possibility that a kill signal breaks the transaction.</p>
+<p>Pending signal will not be processed until <code>pcntl_signal_dispatch()</code> is called. An alternate way is to use <code>declare(ticks=1)</code> to check signal periodically.</p>
+<p>However, when there is no message handling, the consumer is in idle state waiting for a new one. If we signal the program at this time. It’s quite a great chance to receive the follow warning:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">stream_select(): unable to select [4]: Interrupted system call (max_fd=7)</div></pre></td></tr></table></figure>
+<p>The reason is that the <code>$channel-&gt;wait()</code> call will eventually invoke the <code>select()</code> Unix function which is interruptable by the <code>SIGTERM</code>.</p>
+<p>We can let the warning slipped past of course. However, for a robust application, it’s a good practice to treat all PHP warning as an exception (as PHP frameworks did such as Laravel and Swoole)</p>
+<p>Assume that the warning throws an <code>ErrorException</code> if the <code>stream_select</code> was interrupted. Here is the remedy:</p>
+<h2 id="Version-2"><a href="#Version-2" class="headerlink" title="Version 2"></a>Version 2</h2><figure class="highlight php"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div></pre></td><td class="code"><pre><div class="line"></div><div class="line"><span class="comment">// ...</span></div><div class="line"></div><div class="line"><span class="keyword">while</span> (count($channel-&gt;callbacks) &amp;&amp; $running) &#123;</div><div class="line">    <span class="keyword">try</span> &#123;</div><div class="line">        $channel-&gt;wait();</div><div class="line">    &#125; <span class="keyword">catch</span> (ErrorException $ex) &#123;</div><div class="line">        <span class="keyword">if</span> (!preg_match(<span class="string">'~stream_select\\(\\)~i'</span>, $ex-&gt;getMessage())) &#123;</div><div class="line">            <span class="keyword">throw</span> $ex;</div><div class="line">        &#125;</div><div class="line">    &#125;</div><div class="line">    </div><div class="line">    pcntl_signal_dispatch();</div><div class="line">&#125;</div><div class="line"></div><div class="line"><span class="comment">// ...</span></div></pre></td></tr></table></figure>
+<p>As there is no specific exception type for the <code>stream_select()</code> interruption, an unfriendly way is to check the message using regular expression.</p>
+<p>Now seems great! So go get ready for launch.</p>
+<p>Ehh, Houston, we still have a problem. </p>
+<p>A race condition is introduced right after the while condition test and before the wait invocation.</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">while</span> (count($channel-&gt;callbacks) &amp;&amp; $running) &#123;</div><div class="line">    <span class="comment">// Interruption here will be hanged until next loop</span></div><div class="line">    $channel-&gt;wait();</div><div class="line"></div><div class="line">    <span class="comment">// ...</span></div></pre></td></tr></table></figure>
+<p>An Unix style solution is to use <code>pselect()</code> function:</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">while</span> (count($channel-&gt;callbacks)) &#123;</div><div class="line"></div><div class="line">    pcntl_sigprocmask(SIG_BLOCK, [SIGTERM]);</div><div class="line">    pcntl_signal_dispatch();</div><div class="line"></div><div class="line">    <span class="keyword">if</span> (!$running) &#123;</div><div class="line">        <span class="keyword">break</span>;</div><div class="line">    &#125;</div><div class="line"></div><div class="line">    $channel-&gt;pselect_wait([SIGTERM]);</div><div class="line"></div><div class="line">    <span class="comment">// ...</span></div></pre></td></tr></table></figure>
+<p><code>pselect()</code> is equivalent to atomically executing the following calls:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div></pre></td><td class="code"><pre><div class="line">pthread_sigmask(SIG_SETMASK, &amp;sigmask, &amp;origmask);</div><div class="line">ready = select(nfds, &amp;readfds, &amp;writefds, &amp;exceptfds, timeout);</div><div class="line">pthread_sigmask(SIG_SETMASK, &amp;origmask, NULL);</div></pre></td></tr></table></figure>
+<p>Unfortunately, there is no <code>pselect()</code> or <code>pselect_wait()</code> in PHP, this code is infeasible. We have no way to choose but implementing an inelegant mechanism by passing <em>timeout</em> parameter to the <code>$channel-&gt;wait()</code> method.</p>
+<h2 id="Version-3"><a href="#Version-3" class="headerlink" title="Version 3"></a>Version 3</h2><figure class="highlight php"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div><div class="line">39</div><div class="line">40</div><div class="line">41</div><div class="line">42</div><div class="line">43</div><div class="line">44</div><div class="line">45</div><div class="line">46</div><div class="line">47</div></pre></td><td class="code"><pre><div class="line">$running = <span class="keyword">true</span>;</div><div class="line"></div><div class="line">$connection = <span class="keyword">new</span> AMQPStreamConnection(...);</div><div class="line">$channel = $connection-&gt;channel();</div><div class="line"></div><div class="line">$callback = <span class="function"><span class="keyword">function</span> <span class="params">($message)</span> </span>&#123;</div><div class="line">    pcntl_sigprocmask(SIG_BLOCK, [SIGTERM]);</div><div class="line"></div><div class="line">    <span class="comment">// Critical section entry</span></div><div class="line">    <span class="comment">// ...</span></div><div class="line">    <span class="comment">// Critical section exit</span></div><div class="line"></div><div class="line">    pcntl_sigprocmask(SIG_UNBLOCK, [SIGTERM]);</div><div class="line">    pcntl_signal_dispatch();</div><div class="line">&#125;;</div><div class="line"></div><div class="line"><span class="comment">// Initialization code</span></div><div class="line"><span class="comment">// ...</span></div><div class="line">$channel-&gt;basic_consume(..., $callback);</div><div class="line"></div><div class="line">$signalHandler = <span class="function"><span class="keyword">function</span> <span class="params">($signo)</span> <span class="title">use</span> <span class="params">(&amp;$running)</span> </span>&#123;</div><div class="line">    $running = <span class="keyword">false</span>;</div><div class="line">    <span class="keyword">echo</span> <span class="string">"Received SIGTERM signal \n"</span>;</div><div class="line">&#125;;</div><div class="line"></div><div class="line"><span class="comment">// Install signal handler</span></div><div class="line">pcntl_signal(SIGTERM, $signalHandler);</div><div class="line"></div><div class="line"><span class="keyword">while</span> (count($channel-&gt;callbacks) &amp;&amp; $running) &#123;</div><div class="line">    <span class="keyword">try</span> &#123;</div><div class="line">        $channel-&gt;wait(<span class="keyword">null</span>, <span class="keyword">false</span>, <span class="number">15</span>);</div><div class="line">    &#125; <span class="keyword">catch</span> (ErrorException $ex) &#123;</div><div class="line">        <span class="keyword">if</span> (!preg_match(<span class="string">'~stream_select\\(\\)~i'</span>, $ex-&gt;getMessage())) &#123;</div><div class="line">            <span class="keyword">throw</span> $ex;</div><div class="line">        &#125;</div><div class="line">    &#125; <span class="keyword">catch</span> (\PhpAmqpLib\<span class="keyword">Exception</span>\AMQPTimeoutException $ex) &#123;</div><div class="line">        <span class="comment">//</span></div><div class="line">    &#125;</div><div class="line"></div><div class="line">    pcntl_signal_dispatch();</div><div class="line">&#125;</div><div class="line"></div><div class="line"><span class="comment">// Restore signal handler to avoid unexpected interruption</span></div><div class="line">pcntl_signal(SIGTERM, SIG_DFL);</div><div class="line"></div><div class="line">$channel-&gt;close();</div><div class="line">$connection-&gt;close();</div></pre></td></tr></table></figure>
+<p>The <code>$channel-&gt;wait()</code> will time out periodically and throw an <code>AMQPTimeoutException</code>. We just ignore it and continue our next loop if no termination signal issued. Of course the exception might be raised by other reasons as it’s a general timeout exception. Further inspection has to be taken if necessary.</p>
+<p>Also, if the <code>SIGTERM</code> is called just before the <code>$channel-&gt;wait()</code>, there will be an unavoidable <em>timeout</em> seconds delay before normal exit.</p>
+<h2 id="Epilogue"><a href="#Epilogue" class="headerlink" title="Epilogue"></a>Epilogue</h2><p>Well, I implemented this feature based on several references, including one project using this mechanism. Still, I don’t think this is an elegant and perfect solution. If you have any better ideas, or there are potential problems persisting, feel free to leave comments below.</p>
+<h2 id="References"><a href="#References" class="headerlink" title="References"></a>References</h2><ul>
+<li><a href="https://github.com/php-amqplib/php-amqplib/issues/165" target="_blank" rel="noopener">https://github.com/php-amqplib/php-amqplib/issues/165</a></li>
+<li><a href="https://linux.die.net/man/2/pselect" target="_blank" rel="noopener">https://linux.die.net/man/2/pselect</a></li>
+</ul>
+]]></content>
+    
+    <summary type="html">
+    
+      &lt;p&gt;Recently, I need to implement graceful shutdown feature in a message queue consumer handling a large number of transactions in production that can’t be terminated immediately by a simple kill command. Implementation was tricky, though, it’s a great chance to solid my concurrent programming foundation.&lt;/p&gt;
+    
+    </summary>
+    
+      <category term="Tech" scheme="https://kiritox.me/categories/Tech/"/>
+    
+    
+      <category term="PHP" scheme="https://kiritox.me/tags/PHP/"/>
+    
+      <category term="RabbitMQ" scheme="https://kiritox.me/tags/RabbitMQ/"/>
+    
+      <category term="Concurrency" scheme="https://kiritox.me/tags/Concurrency/"/>
+    
+      <category term="Linux" scheme="https://kiritox.me/tags/Linux/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>为 Laravel 启用 Bootstrap 4</title>
+    <link href="https://kiritox.me/archives/enable-bootstrap-for-laravel.html"/>
+    <id>https://kiritox.me/archives/enable-bootstrap-for-laravel.html</id>
+    <published>2018-01-05T14:24:00.000Z</published>
+    <updated>2019-03-17T15:55:16.791Z</updated>
+    
+    <content type="html"><![CDATA[<p>尽管 Laravel 已经推出到 5.5 版本，但其默认的 Bootstrap 组件仍然是 3 的版本，而 Bootstrap 4 已经 Beta 很长一段时间，或许因为不是正式版 Laravel 并没有集成新版本，但我们完全可以手动把版本更换成 4.0。</p>
+<p>以下内容对应 Laravel 5.5 版本</p>
+<a id="more"></a>
+<p>首先需要卸载默认的 Bootstrap 组件，在工程根目录下执行<br><code>npm uninstall --save-dev bootstrap-sass</code><br>然后安装新的 Bootstrap<br><code>npm install --save-dev bootstrap@^4.0.0-beta.3 popper.js</code><br>截止目前 Bootstrap 最新版本是<code>v4.0.0-beta.3</code>，最新版本留意官网，注意新版本的需要<code>popper.js</code>执行一些如下拉菜单弹出的操作，务必安装此模块。</p>
+<p>打开<code>resources/assets/js/bootstrap.js</code>，把</p>
+<pre><code>try {
+    window.$ = window.jQuery = require(&apos;jquery&apos;);
+
+    require(&apos;bootstrap-sass&apos;);
+} catch (e) {}
+</code></pre><p>替换成</p>
+<pre><code>try {
+    window.$ = window.jQuery = require(&apos;jquery&apos;);
+    window.Popper = require(&apos;popper.js&apos;).default;
+
+    require(&apos;bootstrap&apos;);
+} catch (e) {}
+</code></pre><p>此步骤将旧的 Bootstrap 引用变更为新版本的路径。</p>
+<p>打开<code>resources/assets/sass/app.scss</code>，将<br><code>@import &quot;~bootstrap-sass/assets/stylesheets/bootstrap&quot;;</code><br>更改为<br><code>@import &quot;~bootstrap/scss/bootstrap.scss&quot;;</code></p>
+<p>打开<code>resources/assets/sass/_variables.scss</code>，将<br><code>$font-size-base: 14px;</code><br>一行注释或删除</p>
+<p>这样 Bootstrap 4 For Laravel 就配置完毕了</p>
+]]></content>
+    
+    <summary type="html">
+    
+      &lt;p&gt;尽管 Laravel 已经推出到 5.5 版本，但其默认的 Bootstrap 组件仍然是 3 的版本，而 Bootstrap 4 已经 Beta 很长一段时间，或许因为不是正式版 Laravel 并没有集成新版本，但我们完全可以手动把版本更换成 4.0。&lt;/p&gt;
+&lt;p&gt;以下内容对应 Laravel 5.5 版本&lt;/p&gt;
+    
+    </summary>
+    
+      <category term="PHP" scheme="https://kiritox.me/categories/PHP/"/>
+    
+    
+      <category term="PHP" scheme="https://kiritox.me/tags/PHP/"/>
+    
+      <category term="Laravel" scheme="https://kiritox.me/tags/Laravel/"/>
+    
+      <category term="Bootstrap" scheme="https://kiritox.me/tags/Bootstrap/"/>
+    
+  </entry>
+  
+  <entry>
     <title>进击的巨人第一季TV/BD差异比较（13话、21话）</title>
     <link href="https://kiritox.me/archives/attack-on-titan-tv-bd-comparison.html"/>
     <id>https://kiritox.me/archives/attack-on-titan-tv-bd-comparison.html</id>
-    <published>2017-03-25T13:34:00.000Z</published>
-    <updated>2017-03-25T15:27:08.029Z</updated>
+    <published>2017-03-25T13:32:00.000Z</published>
+    <updated>2019-03-31T10:02:41.308Z</updated>
     
     <content type="html"><![CDATA[<p>其实在搭好博客初期就计划要写这篇TV/BD比较的，结果因为拖延症发作balabala之类的原因一直没动过笔，然而现在第二季都说要来了才想起这篇东西还没写。。。</p>
 <p>咳咳，言归正传，首先是强烈建议在观看进击的巨人第二季前重温一次第一季<strong>BD版</strong>，在重新熟悉剧情的同时说不定能发现新惊喜，尤其是13话。当初想写这篇文章的原因是BD版本就如之前网友所说的对画面作出了很多修正，使得BD版本与TV版本产生了不小的差异，可以说经到了让人惊讶的地步。</p>
+<a id="more"></a>
 <p>应该有不少人知道，进击的巨人动画一直都存在制作问题，从一开始的第4话，第5话就出现了制作事故：福冈地区与其他地区的播放版本有明显的差异，不少画面镜头缺失（缺卡）要用静止画面和拉长其他片段来弥补。而之后的13话也是被网友吐槽问题多多。实际上，13话TV放送时同样因为制作进度赶不上出现了静帧和片段拉长的情况，不过因为这次TV播出版本所有地区统一，所以除了BD外任何版本都是看不出差异的（可能是吸取了福冈事件的教训），看过BD版就知道这次明显也属于制作事故，TV播出版本只是个<strong>半成品</strong>，BD版本修正了TV版本各种制作问题。而后期的21话也有类似情况出现，虽然没有13话的明显，但这凸显出了进击的巨人动画制作问题一直困扰着WIT STUDIO。</p>
 <p><img src="https://kiritoa.github.io/usr/uploads/2017/03/264222538.jpg" alt="654681f8eefdc13ad8dee196ff2a74f71366329524_full.jpg"></p>
 <p>下面的对比画面均附有具体时间轴方便定位，左边画面为TV版，右边画面为BD版。</p>
-<a id="more"></a>
-<h2 id="第13话画面对比"><a href="#第13话画面对比" class="headerlink" title="第13话画面对比"></a>第13话画面对比</h2><p>在看接下来的画面比较前可以先看之前有人在贴吧发过的帖子，详细分析过13话的<a href="https://tieba.baidu.com/p/2426550687" target="_blank" rel="external">制作问题</a>。</p>
+<h2 id="第13话画面对比"><a href="#第13话画面对比" class="headerlink" title="第13话画面对比"></a>第13话画面对比</h2><p>在看接下来的画面比较前可以先看之前有人在贴吧发过的帖子，详细分析过13话的<a href="https://tieba.baidu.com/p/2426550687" target="_blank" rel="noopener">制作问题</a>。</p>
 <p>13话可谓是第一季最精彩最燃的一集，剧情是艾伦巨人化后成功搬起石头堵住城门缺口。可惜因为制作进度问题在一定程度上影响了观赏体验，画面缺失也间接影响了对剧情的理解，不难理解为何13话之后要放一个总集篇了（进度赶不及要时间喘一下气），现在BD版发售后终于可以做一个比较，看看当年的TV制作出现了哪些问题。</p>
 <p>首先是众人在屋顶观察巨人镜头缺失，复制了别处的画面补上。<br><img src="https://kiritoa.github.io/usr/uploads/2017/03/2732538910.jpg" alt="13.Still001.jpg"></p>
 <p>画面色调的变化，此处应该是后期进行过调色。<br><img src="https://kiritoa.github.io/usr/uploads/2017/03/611428520.jpg" alt="13.Still002.jpg"></p>
@@ -128,13 +237,10 @@
     
       &lt;p&gt;其实在搭好博客初期就计划要写这篇TV/BD比较的，结果因为拖延症发作balabala之类的原因一直没动过笔，然而现在第二季都说要来了才想起这篇东西还没写。。。&lt;/p&gt;
 &lt;p&gt;咳咳，言归正传，首先是强烈建议在观看进击的巨人第二季前重温一次第一季&lt;strong&gt;BD版&lt;/strong&gt;，在重新熟悉剧情的同时说不定能发现新惊喜，尤其是13话。当初想写这篇文章的原因是BD版本就如之前网友所说的对画面作出了很多修正，使得BD版本与TV版本产生了不小的差异，可以说经到了让人惊讶的地步。&lt;/p&gt;
-&lt;p&gt;应该有不少人知道，进击的巨人动画一直都存在制作问题，从一开始的第4话，第5话就出现了制作事故：福冈地区与其他地区的播放版本有明显的差异，不少画面镜头缺失（缺卡）要用静止画面和拉长其他片段来弥补。而之后的13话也是被网友吐槽问题多多。实际上，13话TV放送时同样因为制作进度赶不上出现了静帧和片段拉长的情况，不过因为这次TV播出版本所有地区统一，所以除了BD外任何版本都是看不出差异的（可能是吸取了福冈事件的教训），看过BD版就知道这次明显也属于制作事故，TV播出版本只是个&lt;strong&gt;半成品&lt;/strong&gt;，BD版本修正了TV版本各种制作问题。而后期的21话也有类似情况出现，虽然没有13话的明显，但这凸显出了进击的巨人动画制作问题一直困扰着WIT STUDIO。&lt;/p&gt;
-&lt;p&gt;&lt;img src=&quot;https://kiritoa.github.io/usr/uploads/2017/03/264222538.jpg&quot; alt=&quot;654681f8eefdc13ad8dee196ff2a74f71366329524_full.jpg&quot;&gt;&lt;/p&gt;
-&lt;p&gt;下面的对比画面均附有具体时间轴方便定位，左边画面为TV版，右边画面为BD版。&lt;/p&gt;
     
     </summary>
     
-      <category term="ACG" scheme="https://kiritox.me/categories/ACG/"/>
+      <category term="Anime" scheme="https://kiritox.me/categories/Anime/"/>
     
     
       <category term="进击的巨人" scheme="https://kiritox.me/tags/%E8%BF%9B%E5%87%BB%E7%9A%84%E5%B7%A8%E4%BA%BA/"/>
@@ -145,28 +251,29 @@
     <title>为Windows apps应用设置本地代理</title>
     <link href="https://kiritox.me/archives/setup-proxy-for-windows-apps.html"/>
     <id>https://kiritox.me/archives/setup-proxy-for-windows-apps.html</id>
-    <published>2017-03-17T07:17:00.000Z</published>
-    <updated>2017-03-25T13:42:23.472Z</updated>
+    <published>2017-03-17T08:43:00.000Z</published>
+    <updated>2019-03-31T03:24:00.286Z</updated>
     
-    <content type="html"><![CDATA[<p>由于众所周知的原因，Wikipedia，Twitter，Facebook这些网站需要设置代理才可以正常访问。正常情况下，电脑安装了代理工具在浏览器或者普通程序中访问是没有问题的，但在Windows 8/8.1/10的商店程序（Windows apps）即使设置了代理也会出现无法连接的情况。<br><img src="https://kiritoa.github.io/usr/uploads/2017/03/1715843754.png" alt="wa3.png"></p>
+    <content type="html"><![CDATA[<p>由于众所周知的原因，Wikipedia，Twitter，Facebook这些网站需要设置代理才可以正常访问。正常情况下，电脑安装了代理工具在浏览器或者普通程序中访问是没有问题的，但在Windows 8/8.1/10的商店程序（Windows apps）即使设置了代理也会出现无法连接的情况。<br><img src="https://kiritox.me/usr/uploads/2017/03/1715843754.png" alt="wa3.png"></p>
 <a id="more"></a>
 <h2 id="原因分析"><a href="#原因分析" class="headerlink" title="原因分析"></a>原因分析</h2><p>经过研究，原因跟Windows apps的运行机制有关系。默认情况下，所有Windows apps均运行在被称为”AppContainers”的独立进程上，默认情况下AppContainers会阻止网络流量发送到本地，因此Windows apps无法连接到本地代理服务器。而这个问题同样也影响了一些开发者使用Fiddler抓包工具本地分析和调试程序。</p>
-<p>在<a href="https://blogs.msdn.microsoft.com/fiddler/2011/12/10/revisiting-fiddler-and-win8-immersive-applications/" target="_blank" rel="external">这篇博客</a>中作者介绍了使用新版Fiddler的工具或者下载独立的 EnableLoopback Utility 为特定程序设置启用Loopback通信功能（Exempt，豁免），我们也可以通过这个办法使被墙的apps连接本地代理服务器使代理生效。</p>
-<h2 id="具体步骤"><a href="#具体步骤" class="headerlink" title="具体步骤"></a>具体步骤</h2><p>下载<a href="https://www.fiddler2.com/dl/EnableLoopbackUtility.exe" target="_blank" rel="external">EnableLoopback Utility</a>工具并安装。<br>如果想看到更详细的信息或者设置可以使用<a href="https://loopback.codeplex.com/" target="_blank" rel="external">Windows Loopback Exemption Manager</a>，操作方法大同小异。使用Windows Loopback Exemption Manager可以看到Edge浏览器默认开启了这个功能，所以Edge才可以正常使用代理或者访问本地主机。</p>
-<p>安装好EnableLoopback Utility后程序自动打开，或者在开始菜单找到”Enable AppContainer Loopback”打开，根据需要点击要开启Loopback的程序，或者直接点”Exempt All”设置所有程序开启，最后点<strong>Save Changes</strong>即可，之后可以点 Refresh 刷新查看当前设置或者关闭程序。<br><img src="https://kiritoa.github.io/usr/uploads/2017/03/2178465291.png" alt="wa1.png"></p>
-<p>此时再打开Wikipedia，已经可以正常访问。<br><img src="https://kiritoa.github.io/usr/uploads/2017/03/1374248038.jpg" alt="wa2.jpg"></p>
+<p>在<a href="https://blogs.msdn.microsoft.com/fiddler/2011/12/10/revisiting-fiddler-and-win8-immersive-applications/" target="_blank" rel="noopener">这篇博客</a>中作者介绍了使用新版Fiddler的工具或者下载独立的 EnableLoopback Utility 为特定程序设置启用Loopback通信功能（Exempt，豁免），我们也可以通过这个办法使被墙的apps连接本地代理服务器使代理生效。</p>
+<h2 id="具体步骤"><a href="#具体步骤" class="headerlink" title="具体步骤"></a>具体步骤</h2><p><em>感谢 <strong>Daniel</strong> 的提醒，Fiddler移动了程序的下载位置，已更新下载链接。</em><br>下载<a href="https://telerik-fiddler.s3.amazonaws.com/fiddler/addons/enableloopbackutility.exe" target="_blank" rel="noopener">EnableLoopback Utility</a>工具并安装。</p>
+<p>如果想看到更详细的信息或者设置可以使用<a href="https://loopback.codeplex.com/" target="_blank" rel="noopener">Windows Loopback Exemption Manager</a>，操作方法大同小异。使用Windows Loopback Exemption Manager可以看到Edge浏览器默认开启了这个功能，所以Edge才可以正常使用代理或者访问本地主机。</p>
+<p>安装好EnableLoopback Utility后程序自动打开，或者在开始菜单找到”Enable AppContainer Loopback”打开，根据需要点击要开启Loopback的程序，或者直接点”Exempt All”设置所有程序开启，最后点<strong>Save Changes</strong>即可，之后可以点 Refresh 刷新查看当前设置或者关闭程序。<br><img src="https://kiritox.me/usr/uploads/2017/03/2178465291.png" alt="wa1.png"></p>
+<p>此时再打开Wikipedia，已经可以正常访问。<br><img src="https://kiritox.me/usr/uploads/2017/03/1374248038.jpg" alt="wa2.jpg"></p>
 <p>该方法适用于大部分Windows apps程序，邮件程序亦可以正常连接Gmail邮箱，但仍然有部分应用不支持，如Facebook即使开启了Loopback仍然会出现连接超时的问题。</p>
 <hr>
-<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p><a href="https://blogs.msdn.microsoft.com/fiddler/2011/12/10/revisiting-fiddler-and-win8-immersive-applications/" target="_blank" rel="external">https://blogs.msdn.microsoft.com/fiddler/2011/12/10/revisiting-fiddler-and-win8-immersive-applications/</a><br><a href="https://my.oschina.net/farces/blog/616110" target="_blank" rel="external">https://my.oschina.net/farces/blog/616110</a><br><a href="https://loopback.codeplex.com/" target="_blank" rel="external">https://loopback.codeplex.com/</a></p>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p><a href="https://blogs.msdn.microsoft.com/fiddler/2011/12/10/revisiting-fiddler-and-win8-immersive-applications/" target="_blank" rel="noopener">https://blogs.msdn.microsoft.com/fiddler/2011/12/10/revisiting-fiddler-and-win8-immersive-applications/</a><br><a href="https://my.oschina.net/farces/blog/616110" target="_blank" rel="noopener">https://my.oschina.net/farces/blog/616110</a><br><a href="https://loopback.codeplex.com/" target="_blank" rel="noopener">https://loopback.codeplex.com/</a></p>
 ]]></content>
     
     <summary type="html">
     
-      &lt;p&gt;由于众所周知的原因，Wikipedia，Twitter，Facebook这些网站需要设置代理才可以正常访问。正常情况下，电脑安装了代理工具在浏览器或者普通程序中访问是没有问题的，但在Windows 8/8.1/10的商店程序（Windows apps）即使设置了代理也会出现无法连接的情况。&lt;br&gt;&lt;img src=&quot;https://kiritoa.github.io/usr/uploads/2017/03/1715843754.png&quot; alt=&quot;wa3.png&quot;&gt;&lt;/p&gt;
+      &lt;p&gt;由于众所周知的原因，Wikipedia，Twitter，Facebook这些网站需要设置代理才可以正常访问。正常情况下，电脑安装了代理工具在浏览器或者普通程序中访问是没有问题的，但在Windows 8/8.1/10的商店程序（Windows apps）即使设置了代理也会出现无法连接的情况。&lt;br&gt;&lt;img src=&quot;https://kiritox.me/usr/uploads/2017/03/1715843754.png&quot; alt=&quot;wa3.png&quot;&gt;&lt;/p&gt;
     
     </summary>
     
-      <category term="技术" scheme="https://kiritox.me/categories/%E6%8A%80%E6%9C%AF/"/>
+      <category term="Windows" scheme="https://kiritox.me/categories/Windows/"/>
     
     
       <category term="代理" scheme="https://kiritox.me/tags/%E4%BB%A3%E7%90%86/"/>
@@ -180,13 +287,13 @@
     <link href="https://kiritox.me/archives/flash-wndr3700v4-to-stock-firmware.html"/>
     <id>https://kiritox.me/archives/flash-wndr3700v4-to-stock-firmware.html</id>
     <published>2016-11-23T02:38:00.000Z</published>
-    <updated>2017-03-24T06:11:26.317Z</updated>
+    <updated>2019-03-17T15:53:31.137Z</updated>
     
     <content type="html"><![CDATA[<p>之前刷Openwrt的时候已经有人反映过说再也刷不回原厂固件，不过我是不太相信的，因为路由器本身有救砖模式。不过真正刷的时候还是折腾了好一阵子，但肯定是没问题的。这里结合网上的帖子和自己的研究分析了一下原因并列出解决步骤，本文适用于刷了OpenWrt或者DD-WRT的NETGEAR WNDR3700v4路由器，直接TFTP方式刷回原厂固件失败的情况。此方法也适用于WNDR4300，自行查找对应的固件刷入即可。</p>
 <a id="more"></a>
 <h2 id="原因分析"><a href="#原因分析" class="headerlink" title="原因分析"></a>原因分析</h2><p>本人之前使用的是<strong>openwrt 15.01</strong>版本，TFTP刷回原厂固件表现为路由器Power指示灯一直是橙色，似乎还不断地自动重启，因此常规的救砖方式无效。先上结论，刷回原版固件出问题基本都是因为刷入第三方固件时<strong>破坏了路由器里面Flash的分区</strong>。</p>
 <p>WNDR3700v4里面的Flash也有空间是用来存放设置，uboot等内容，各自存放在不同的分区，而firmware部分才是真正的存放Openwrt系统的地方，Openwrt里面看到的可用空间也是这部分的内容。而刷入的img文件（平时说的固件）其实也包括了整个Flash的分区信息。</p>
-<p>根据Openwrt官网WNDR4300 Flash布局的<a href="https://wiki.openwrt.org/zh-cn/toh/netgear/wndr4300" target="_blank" rel="external">说明</a>，WNDR3700v4/WNDR4300（两款型号硬件基本一致，也都使用NAND Flash）原版固件的Flash布局（为方便理解统一称为分区）是这样的：</p>
+<p>根据Openwrt官网WNDR4300 Flash布局的<a href="https://wiki.openwrt.org/zh-cn/toh/netgear/wndr4300" target="_blank" rel="noopener">说明</a>，WNDR3700v4/WNDR4300（两款型号硬件基本一致，也都使用NAND Flash）原版固件的Flash布局（为方便理解统一称为分区）是这样的：</p>
 <p><img src="https://kiritoa.github.io/usr/uploads/2016/12/3394940427.png" alt="Screenshot 2016-12-03 09.35.17.png"></p>
 <p>Openwrt官方固件是这样的</p>
 <p><img src="https://kiritoa.github.io/usr/uploads/2016/12/344266447.png" alt="Screenshot 2016-12-03 09.35.23.png"></p>
@@ -198,19 +305,20 @@ wndr4300_mtdlayout=mtdparts=ar934x-nfc:256k(u-boot)ro,256k(u-boot-env)ro,256k(ca
 <p>而DD-WRT固件也同样会产生这个问题，其Flash分区如下：</p>
 <table border="1"><br><tr align="center"><td rowspan="2">mtd0<br><b>RedBoot</b><br>512KiB</td><td rowspan="2">mtd5<br><b>board_config</b><br>512KiB</td><td rowspan="2">unused<br>2.5MiB</td><td rowspan="2">mtd4<br><b>nvram</b><br>512KiB</td><td rowspan="2">unused<br>3MiB</td><td colspan="3">mtd1 <b>linux</b> 124160KiB (121.25MiB)</td></tr><tr align="center"><td>unused<br>1152KiB</td><td>mtd2<br><b>rootfs</b><br>21504KiB</td><td>mtd3<br><b>ddwrt</b><br>101504KiB</td></tr></table>
 
+
 <p>其中linux分区在Flash上的地址对应的就是Openwrt和原版固件中frimware，caldata_backup和reserved的位置（0x0000006c0000-0x000008000000）。</p>
 <p>在TFTP模式下似乎并不会自动对flash执行erase命令（相当于格式化），仅仅覆盖了原来的内容，所以第三方固件的残留内容很有可能影响了原版固件的运作，因此需要手动执行该命令。为了方便擦除可以先把路由器刷到DD-WRT，然后对linux分区执行erase命令，把frimware以后的内容全部清空再刷回原版固件。</p>
 <h2 id="固件和环境准备"><a href="#固件和环境准备" class="headerlink" title="固件和环境准备"></a>固件和环境准备</h2><ol>
 <li><p>在控制面板“启用或关闭windows功能”启用“TFTP客户端”组件。</p>
 </li>
-<li><p>在DD-WRT下载WNDR3700v4最新固件<a href="http://www.dd-wrt.com/wiki/index.php/Netgear_WNDR3700#v4" target="_blank" rel="external">ftp://ftp.dd-wrt.com/betas/2014/02-04-2014-r23503/netgear-wndr3700v4/wndr3700v4-factory.img</a>。</p>
+<li><p>在DD-WRT下载WNDR3700v4最新固件<a href="http://www.dd-wrt.com/wiki/index.php/Netgear_WNDR3700#v4" target="_blank" rel="noopener">ftp://ftp.dd-wrt.com/betas/2014/02-04-2014-r23503/netgear-wndr3700v4/wndr3700v4-factory.img</a>。</p>
 </li>
 <li><p>下载最新版固件，可选择国行（PRRU，中国俄罗斯特供版？）固件或者国际版固件，PRRU固件增加了IPTV，IP-MAC，脱机下载等国际版没有的功能，而国际版则版本较新，修复改进的项目比较多，各位可以自行斟酌选哪个版本。</p>
 </li>
 </ol>
-<p><strong>Firmware Version 1.0.2.80 (All Regions Except China &amp; Russia)</strong><br><a href="http://www.downloads.netgear.com/files/GDC/WNDR3700V4/WNDR3700v4-V1.0.2.80.zip" target="_blank" rel="external">http://www.downloads.netgear.com/files/GDC/WNDR3700V4/WNDR3700v4-V1.0.2.80.zip</a></p>
-<p><strong>Firmware Version 1.0.1.60 (For China and Russia Only)</strong><br><a href="http://www.downloads.netgear.com/files/GDC/WNDR3700V4/WNDR3700v4_PRRU_FW_V1.0.1.60.zip" target="_blank" rel="external">http://www.downloads.netgear.com/files/GDC/WNDR3700V4/WNDR3700v4_PRRU_FW_V1.0.1.60.zip</a></p>
-<p>参考帖子:<br><a href="http://www.right.com.cn/forum/thread-185263-1-1.html" target="_blank" rel="external">http://www.right.com.cn/forum/thread-185263-1-1.html</a><br><a href="http://www.right.com.cn/forum/thread-154774-1-1.html" target="_blank" rel="external">http://www.right.com.cn/forum/thread-154774-1-1.html</a></p>
+<p><strong>Firmware Version 1.0.2.80 (All Regions Except China &amp; Russia)</strong><br><a href="http://www.downloads.netgear.com/files/GDC/WNDR3700V4/WNDR3700v4-V1.0.2.80.zip" target="_blank" rel="noopener">http://www.downloads.netgear.com/files/GDC/WNDR3700V4/WNDR3700v4-V1.0.2.80.zip</a></p>
+<p><strong>Firmware Version 1.0.1.60 (For China and Russia Only)</strong><br><a href="http://www.downloads.netgear.com/files/GDC/WNDR3700V4/WNDR3700v4_PRRU_FW_V1.0.1.60.zip" target="_blank" rel="noopener">http://www.downloads.netgear.com/files/GDC/WNDR3700V4/WNDR3700v4_PRRU_FW_V1.0.1.60.zip</a></p>
+<p>参考帖子:<br><a href="http://www.right.com.cn/forum/thread-185263-1-1.html" target="_blank" rel="noopener">http://www.right.com.cn/forum/thread-185263-1-1.html</a><br><a href="http://www.right.com.cn/forum/thread-154774-1-1.html" target="_blank" rel="noopener">http://www.right.com.cn/forum/thread-154774-1-1.html</a></p>
 <h2 id="实现"><a href="#实现" class="headerlink" title="实现"></a>实现</h2><ol>
 <li><p>路由器断电后按住RESET键开机，等待电源指示灯变成绿色闪烁状态时松开，用网线连接路由器，网卡IP设置成192.198.1.2（只要是同网段不是192.168.1.1的IP都可以），子网掩码255.255.255.0，网关设置192.168.1.1.</p>
 </li>
@@ -222,7 +330,7 @@ wndr4300_mtdlayout=mtdparts=ar934x-nfc:256k(u-boot)ro,256k(u-boot-env)ro,256k(ca
 <p><img src="https://kiritoa.github.io/usr/uploads/2016/12/136554523.png" alt="Screenshot 2016-12-03 00.09.34.png"></p>
 <p><img src="https://kiritoa.github.io/usr/uploads/2016/12/701989518.png" alt="Screenshot 2016-12-03 00.23.31.png"></p>
 <ol>
-<li>使用SSH工具登入，Windows平台个人推荐<a href="http://mobaxterm.mobatek.net/" target="_blank" rel="external">MobaXterm</a>，SSH登陆用户名为root，密码是之前设置的登陆密码，成功登陆后执行以下命令：</li>
+<li>使用SSH工具登入，Windows平台个人推荐<a href="http://mobaxterm.mobatek.net/" target="_blank" rel="noopener">MobaXterm</a>，SSH登陆用户名为root，密码是之前设置的登陆密码，成功登陆后执行以下命令：</li>
 </ol>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line">mtd erase linux</div><div class="line">reboot</div></pre></td></tr></table></figure>
 <ol>
@@ -241,7 +349,7 @@ wndr4300_mtdlayout=mtdparts=ar934x-nfc:256k(u-boot)ro,256k(u-boot-env)ro,256k(ca
     
     </summary>
     
-      <category term="技术" scheme="https://kiritox.me/categories/%E6%8A%80%E6%9C%AF/"/>
+      <category term="Tech" scheme="https://kiritox.me/categories/Tech/"/>
     
     
       <category term="WNDR3700v4" scheme="https://kiritox.me/tags/WNDR3700v4/"/>
@@ -259,17 +367,17 @@ wndr4300_mtdlayout=mtdparts=ar934x-nfc:256k(u-boot)ro,256k(u-boot-env)ro,256k(ca
     <link href="https://kiritox.me/archives/home-fiber-network-upgrade-log.html"/>
     <id>https://kiritox.me/archives/home-fiber-network-upgrade-log.html</id>
     <published>2016-11-22T12:22:00.000Z</published>
-    <updated>2016-12-06T16:13:25.020Z</updated>
+    <updated>2019-03-17T15:53:36.159Z</updated>
     
     <content type="html"><![CDATA[<p>电信的光纤升级改造计划已经搞了好几年，虽然一直都有想升级的想法，但是之前电信一直都说线路没有覆盖到不能升级，到了最近终于说是覆盖到小区了，不过去了电信营业厅问才知道升级也要收钱的( ˘･з･)没想到去完营业厅第二天电信（不是营业厅的人）就打电话来说现在要光进铜退，可以免费升光纤，我擦。。。。还好没同意升级不然白花钱了。</p>
 <a id="more"></a>
 <h2 id="配置"><a href="#配置" class="headerlink" title="配置"></a>配置</h2><p>言归正传，经过安装师傅一番布线，配置好了光纤，电信送的光猫是这样的：</p>
 <p><img src="https://kiritoa.github.io/usr/uploads/2016/11/1861192054.jpg" alt="IMG_20161122_131849_2.jpg"></p>
 <p>光猫背后有两个网络接口，推测（后来在超级管理员管理界面证实）千兆口用来上网，百兆口是电信IPTV。另外电话就是普通的固话了，另外竟然还提供了个USB插口，未测试是不是可以插U盘做NAS之类的。</p>
-<p><img src="https://kiritoa.github.io/usr/uploads/2016/11/2011429110.jpg" alt="IMG_20161119_211219.jpg"></p>
+<p><img src="https://kiritox.me/uploads/2016/11/2011429110.jpg" alt="IMG_20161119_211219.jpg"></p>
 <p>默认光猫是带自动拨号的，连上光猫的wifi或者千兆网线就可以不用拨号立即上网，也就是所谓的<strong>路由模式</strong>，光猫充当路由器，对于一般用户来说这个设定已经很好用了。</p>
-<p>如果千兆口后面接二级路由器的话根据不同情况要分别设置：一种是千兆口接二级路由器的WAN口，此时路由器必须改成与光猫不同IP网段，不同品牌教程不一样，这里列一个<a href="http://service.tp-link.com.cn/detail_article_3241.html" target="_blank" rel="external">TP-LINK的参考</a>，新的TP-LINK路由器似乎可以自动识别并自动更改设置无需人工修改。</p>
-<p>一开始是打算就这样用路由模式也不错，但光猫只能更改很基本的设定，像DMZ，端口转发，DDNS这些功能通通不能设置，只能以<strong>超级管理员</strong>身份登入才能更改，但即使是这个管理界面反应慢，也不好设置，说白了就是光猫的固件烂。于是打算把光猫改成传说中的<strong>桥接模式</strong>，光猫仅仅起到<a href="https://zh.wikipedia.org/wiki/%E6%A9%8B%E6%8E%A5%E5%99%A8" target="_blank" rel="external">桥接作用</a>，让接在千兆口后面的路由器负责拨号和管理，这样就和以前用ADSL时的方式一样了。</p>
+<p>如果千兆口后面接二级路由器的话根据不同情况要分别设置：一种是千兆口接二级路由器的WAN口，此时路由器必须改成与光猫不同IP网段，不同品牌教程不一样，这里列一个<a href="http://service.tp-link.com.cn/detail_article_3241.html" target="_blank" rel="noopener">TP-LINK的参考</a>，新的TP-LINK路由器似乎可以自动识别并自动更改设置无需人工修改。</p>
+<p>一开始是打算就这样用路由模式也不错，但光猫只能更改很基本的设定，像DMZ，端口转发，DDNS这些功能通通不能设置，只能以<strong>超级管理员</strong>身份登入才能更改，但即使是这个管理界面反应慢，也不好设置，说白了就是光猫的固件烂。于是打算把光猫改成传说中的<strong>桥接模式</strong>，光猫仅仅起到<a href="https://zh.wikipedia.org/wiki/%E6%A9%8B%E6%8E%A5%E5%99%A8" target="_blank" rel="noopener">桥接作用</a>，让接在千兆口后面的路由器负责拨号和管理，这样就和以前用ADSL时的方式一样了。</p>
 <p><img src="https://kiritoa.github.io/usr/uploads/2016/11/62885993.jpg" alt="天翼1.jpg"></p>
 <p><img src="https://kiritoa.github.io/usr/uploads/2016/11/522741982.jpg" alt="ty2.jpg"></p>
 <p><img src="https://kiritoa.github.io/usr/uploads/2016/11/1515762916.jpg" alt="ty3.jpg"></p>
@@ -288,10 +396,10 @@ wndr4300_mtdlayout=mtdparts=ar934x-nfc:256k(u-boot)ro,256k(u-boot-env)ro,256k(ca
 <h2 id="家庭网络环境的优化"><a href="#家庭网络环境的优化" class="headerlink" title="家庭网络环境的优化"></a>家庭网络环境的优化</h2><p>升级了光纤网络，自然也应当对网络环境<del>批判</del>优化一番，现在的家庭网络拓扑是这样的：</p>
 <p><img src="https://kiritoa.github.io/usr/uploads/2016/11/946060881.png" alt="网络拓扑.png"></p>
 <p>客厅中一体机支持USB和无线连接，事实证明无线连接非常好用，这样一体机不需要考虑布线的问题了。</p>
-<p>因为老房屋一般都没有预埋网线，书房网络连接最开始是以无线方式连接到路由器的，但那时的无线路由器和无线网卡并不是特别好用（802.11g时代），后来改成拉一条网线在地面直接从客厅直连到书房的，但在出现多次有人因为网线被绊倒的情况后考虑到安全方面的原因改成了用<a href="http://www.tp-link.com.cn/product_336.html" target="_blank" rel="external">无线电力猫（路由器）</a> 充当网线，顺便解决了全屋无线覆盖率问题，本来电力猫的网线是接到书房电脑上的现在改成接到NAS，电脑无线方式连接电力猫。但是问题也很明显，现在虽然配置了NAS但整体网络环境并没有达到千兆速度。电力猫也是各种问题，首先本身只有百兆接口，通过电力线传输速度达不到100Mbps，而电力猫有时会也因为干扰或者其他问题出现无法上网的情况。目前NAS主要是用来储存照片和文件，如果要作为生产力用肯定要先升级网络环境。</p>
-<p>主路由使用NETGEAR WNDR3700v4，刷了openwrt当作翻墙网关,有兴趣的可以参考<a href="https://cokebar.info/archives/978" target="_blank" rel="external">教程</a>，不过现在最主要的作用是为PS4提供透明代理环境，保证联机质量，以及无污染DNS环境。但此方案实际上遇到了很麻烦的问题：主路由偶尔因为DNS解析出现问题导致全屋网络异常，表现为网页无法解析，主要原因是上游境外DNS服务器连接超时引起（公共DNS或shadowsocks服务器连接超时会出现此问题），常常需要人工维护。</p>
+<p>因为老房屋一般都没有预埋网线，书房网络连接最开始是以无线方式连接到路由器的，但那时的无线路由器和无线网卡并不是特别好用（802.11g时代），后来改成拉一条网线在地面直接从客厅直连到书房的，但在出现多次有人因为网线被绊倒的情况后考虑到安全方面的原因改成了用<a href="http://www.tp-link.com.cn/product_336.html" target="_blank" rel="noopener">无线电力猫（路由器）</a> 充当网线，顺便解决了全屋无线覆盖率问题，本来电力猫的网线是接到书房电脑上的现在改成接到NAS，电脑无线方式连接电力猫。但是问题也很明显，现在虽然配置了NAS但整体网络环境并没有达到千兆速度。电力猫也是各种问题，首先本身只有百兆接口，通过电力线传输速度达不到100Mbps，而电力猫有时会也因为干扰或者其他问题出现无法上网的情况。目前NAS主要是用来储存照片和文件，如果要作为生产力用肯定要先升级网络环境。</p>
+<p>主路由使用NETGEAR WNDR3700v4，刷了openwrt当作翻墙网关,有兴趣的可以参考<a href="https://cokebar.info/archives/978" target="_blank" rel="noopener">教程</a>，不过现在最主要的作用是为PS4提供透明代理环境，保证联机质量，以及无污染DNS环境。但此方案实际上遇到了很麻烦的问题：主路由偶尔因为DNS解析出现问题导致全屋网络异常，表现为网页无法解析，主要原因是上游境外DNS服务器连接超时引起（公共DNS或shadowsocks服务器连接超时会出现此问题），常常需要人工维护。</p>
 <p>按照现有环境和需要，改成以下网络拓扑：</p>
-<p><img src="https://kiritoa.github.io/usr/uploads/2016/11/867703132.png" alt="改良拓扑.png"></p>
+<p><img src="https://kiritox.me/uploads/2016/11/867703132.png" alt="改良拓扑.png"></p>
 <p>主路由取消作为翻墙网关的作用，书房添加千兆交换机提供有线接口连接，再安装一个路由器负责透明代理，连接上去的所有设备均处于无墙环境，既满足翻墙需要，也避免了因为翻墙问题影响到主路由。偶然间发现一个GL-iNet迷你路由器很适合当翻墙网关，99元的价位比较合理，还可以很方便的随身携带到处愉快地翻墙(´ΘωΘ`)</p>
 <p><img src="https://kiritoa.github.io/usr/uploads/2016/11/3622431413.jpg" alt="TB1PGnyJpXXXXbkXFXXXXXXXXXX_!!0-item_pic.jpg"></p>
 <h2 id="未来"><a href="#未来" class="headerlink" title="未来"></a>未来</h2><p>未来打算进一步优化网络，将电力猫线路重新换成网线，以钉墙方式安装网线，这样使主路由到书房网速可以达到千兆。电力猫保留安装以保证无线覆盖率。</p>
@@ -304,7 +412,7 @@ wndr4300_mtdlayout=mtdparts=ar934x-nfc:256k(u-boot)ro,256k(u-boot-env)ro,256k(ca
     
     </summary>
     
-      <category term="技术" scheme="https://kiritox.me/categories/%E6%8A%80%E6%9C%AF/"/>
+      <category term="Tech" scheme="https://kiritox.me/categories/Tech/"/>
     
     
       <category term="电信" scheme="https://kiritox.me/tags/%E7%94%B5%E4%BF%A1/"/>
@@ -320,7 +428,7 @@ wndr4300_mtdlayout=mtdparts=ar934x-nfc:256k(u-boot)ro,256k(u-boot-env)ro,256k(ca
     <link href="https://kiritox.me/archives/nas-build-log-practical.html"/>
     <id>https://kiritox.me/archives/nas-build-log-practical.html</id>
     <published>2016-07-17T11:09:00.000Z</published>
-    <updated>2016-12-06T16:13:49.506Z</updated>
+    <updated>2019-03-17T15:53:48.576Z</updated>
     
     <content type="html"><![CDATA[<p>本来题目是想写实践篇的，但是折腾一圈下来发现这应该叫折腾篇才对，因为实在是太太太。。。折腾了</p>
 <a id="more"></a>
@@ -337,7 +445,7 @@ wndr4300_mtdlayout=mtdparts=ar934x-nfc:256k(u-boot)ro,256k(u-boot-env)ro,256k(ca
 <ul>
 <li>软路由提供透明代理网络环境</li>
 </ul>
-<h2 id="硬件选型"><a href="#硬件选型" class="headerlink" title="硬件选型"></a>硬件选型</h2><p>实际开始打造之前对硬件方案进行了<a href="https://kiritoa.github.io/archives/nas-build-hardware-solution.html" target="_blank" rel="external">一些研究</a>，因为手头上有一些之前DIY剩下的零部件，包括机箱，电源，内存等等，因此本次实际打造只买了一块主板，总花费470元。</p>
+<h2 id="硬件选型"><a href="#硬件选型" class="headerlink" title="硬件选型"></a>硬件选型</h2><p>实际开始打造之前对硬件方案进行了<a href="https://kiritox.me/archives/nas-build-hardware-solution.html">一些研究</a>，因为手头上有一些之前DIY剩下的零部件，包括机箱，电源，内存等等，因此本次实际打造只买了一块主板，总花费470元。</p>
 <p>硬件配置：</p>
 <ul>
 <li>主板+CPU：ASROCK J3160M – 470元</li>
@@ -346,13 +454,13 @@ wndr4300_mtdlayout=mtdparts=ar934x-nfc:256k(u-boot)ro,256k(u-boot-env)ro,256k(ca
 <li>电源：酷冷至尊战斧二代400W电源</li>
 <li>硬盘：1x希捷1TB + 1x希捷250GB</li>
 </ul>
-<p>曾被AMD坑过的我现在买新CPU都是首选Intel，因此根据Intel最新发布的<a href="http://www.intel.com/content/www/us/en/processors/public-roadmap-article.html" title="Roadmap" target="_blank" rel="external">Roadmap</a>选择了 <a href="http://ark.intel.com/products/91533/Intel-Celeron-Processor-J3160-2M-Cache-up-to-2_24-GHz" target="_blank" rel="external">Intel Celeron J3160</a>，J3160是Intel 16’Q1新发布的一款超低功耗SoC CPU，TDP仅为6W，支持VT-x、AES等，性能一般但已经可以满足基本NAS需求，做软路由也相当不错。考虑到要低功耗的原因没有选G1840, G4400这些型号，虽然总有人说功耗也高不了多少不要迷恋低功耗之类的，但是这两个CPU idle功率要高10W左右，有负载时就更高了。而J3160有负载时功耗也仅在15W-20W之间。更何况品牌NAS也都是有用J3160，J1900，N3150这些低功耗U。</p>
+<p>曾被AMD坑过的我现在买新CPU都是首选Intel，因此根据Intel最新发布的<a href="http://www.intel.com/content/www/us/en/processors/public-roadmap-article.html" title="Roadmap" target="_blank" rel="noopener">Roadmap</a>选择了 <a href="http://ark.intel.com/products/91533/Intel-Celeron-Processor-J3160-2M-Cache-up-to-2_24-GHz" target="_blank" rel="noopener">Intel Celeron J3160</a>，J3160是Intel 16’Q1新发布的一款超低功耗SoC CPU，TDP仅为6W，支持VT-x、AES等，性能一般但已经可以满足基本NAS需求，做软路由也相当不错。考虑到要低功耗的原因没有选G1840, G4400这些型号，虽然总有人说功耗也高不了多少不要迷恋低功耗之类的，但是这两个CPU idle功率要高10W左右，有负载时就更高了。而J3160有负载时功耗也仅在15W-20W之间。更何况品牌NAS也都是有用J3160，J1900，N3150这些低功耗U。</p>
 <p><img src="https://kiritoa.github.io/usr/uploads/2016/07/1099110739.png" alt="Screenshot 2016-07-13 20.46.55.png"></p>
 <p>个人认为CPU选择要根据实际出发不要盲目跟风，如果没有虚拟化、HTPC、实时转码、编码、渲染。。。之类的需求高性能的CPU也是浪费。</p>
-<p>主板方面选择的是华擎的<a href="http://www.asrock.com/mb/Intel/J3160M/index.asp" target="_blank" rel="external">J3160M</a>，M-ATX规格主板，2xSATA3接口，CPU被动散热无需风扇。选择它主要是因为手头上有多余的台式DDR3内存可以用上，而且也有不错的扩展性（3xPCI-E Slot），不过SATA接口略不足，需要加SATA扩展卡扩展。</p>
+<p>主板方面选择的是华擎的<a href="http://www.asrock.com/mb/Intel/J3160M/index.asp" target="_blank" rel="noopener">J3160M</a>，M-ATX规格主板，2xSATA3接口，CPU被动散热无需风扇。选择它主要是因为手头上有多余的台式DDR3内存可以用上，而且也有不错的扩展性（3xPCI-E Slot），不过SATA接口略不足，需要加SATA扩展卡扩展。</p>
 <p><img src="https://kiritoa.github.io/usr/uploads/2016/07/3779195123.jpg" alt="J3160M(L2).jpg"></p>
 <p><img src="https://kiritoa.github.io/usr/uploads/2016/07/1506247690.jpg" alt="J3160M(L5).jpg"></p>
-<p>而ITX版本<a href="http://www.asrock.com/mb/Intel/J3160-ITX/index.asp" target="_blank" rel="external">华擎J3160-ITX</a>提供4xSATA3，1xPCI-E Slot + 1x Mini-PCIE Slot，使用笔记本DDR3/DDR3L内存，如果对体积有需求直接考虑ITX板。如果想拓展SATA口可以买Mini-PCIE插槽的扩展卡，可额外提供2个SATA接口。</p>
+<p>而ITX版本<a href="http://www.asrock.com/mb/Intel/J3160-ITX/index.asp" target="_blank" rel="noopener">华擎J3160-ITX</a>提供4xSATA3，1xPCI-E Slot + 1x Mini-PCIE Slot，使用笔记本DDR3/DDR3L内存，如果对体积有需求直接考虑ITX板。如果想拓展SATA口可以买Mini-PCIE插槽的扩展卡，可额外提供2个SATA接口。</p>
 <p>内存8G的确是有点过剩了，如果不上虚拟化的话迟些出掉一条或者装到另一台电脑上。</p>
 <p>硬盘都是之前留下来的东西，虽然说希捷坏盘率高什么的，但两块硬盘用了这么多年都还健在，也没看到警告信息，可能是运行时间不长的原因吧(◔౪◔)（两硬盘在线时间均为3000小时左右）。不过迟些会上WD的红盘。</p>
 <p>实际测试了一下功耗，总结如下：</p>
@@ -383,9 +491,9 @@ wndr4300_mtdlayout=mtdparts=ar934x-nfc:256k(u-boot)ro,256k(u-boot-env)ro,256k(ca
 </tbody>
 </table>
 <hr>
-<h2 id="软件方案"><a href="#软件方案" class="headerlink" title="软件方案"></a>软件方案</h2><p>比较知名的免费NAS系统有：FreeNAS、NAS4Free、OpenMediaVault（详细介绍可以<a href="http://blog.brianmoses.net/2015/04/diy-nas-software-roundup.html" target="_blank" rel="external">看这里</a>）其他系统方案还有黑群晖和Windows Server。</p>
+<h2 id="软件方案"><a href="#软件方案" class="headerlink" title="软件方案"></a>软件方案</h2><p>比较知名的免费NAS系统有：FreeNAS、NAS4Free、OpenMediaVault（详细介绍可以<a href="http://blog.brianmoses.net/2015/04/diy-nas-software-roundup.html" target="_blank" rel="noopener">看这里</a>）其他系统方案还有黑群晖和Windows Server。</p>
 <blockquote>
-<p>FreeNAS、OpenMediaVault、NAS4Free关系：Olivier Cochard-Labbe在2005年创建了FreeNAS项目，后Volker Theile加入该项目作为核心开发人员；2009年12月Olivier Cochard-Labbe发表声明停止为FreeNAS 0.7版本开发新功能后，Volker Theile创建了基于Debian Linux的OpenMediaVault项目，并采用GPLv3授权；iXsystems收购FreeNAS后重写了网页框架和构架在2011年发布了全新的FreeNAS 8版本；2011年其余开发者基于FreeNAS 0.7开发了分支并重新命名为NAS4Free。<br><em>引用:<a href="http://songming.me/openmediavault-setup.html" target="_blank" rel="external">http://songming.me/openmediavault-setup.html</a></em></p>
+<p>FreeNAS、OpenMediaVault、NAS4Free关系：Olivier Cochard-Labbe在2005年创建了FreeNAS项目，后Volker Theile加入该项目作为核心开发人员；2009年12月Olivier Cochard-Labbe发表声明停止为FreeNAS 0.7版本开发新功能后，Volker Theile创建了基于Debian Linux的OpenMediaVault项目，并采用GPLv3授权；iXsystems收购FreeNAS后重写了网页框架和构架在2011年发布了全新的FreeNAS 8版本；2011年其余开发者基于FreeNAS 0.7开发了分支并重新命名为NAS4Free。<br><em>引用:<a href="http://songming.me/openmediavault-setup.html" target="_blank" rel="noopener">http://songming.me/openmediavault-setup.html</a></em></p>
 </blockquote>
 <h3 id="FreeNAS、NAS4Free"><a href="#FreeNAS、NAS4Free" class="headerlink" title="FreeNAS、NAS4Free"></a>FreeNAS、NAS4Free</h3><p>这两个系统是基于FreeBSD开发，使用ZFS分区，对内存需求比较高，官方强烈推荐使用ECC内存，而且至少需要8GB，虽然这两个系统相当不错，但本次计划没有ECC内存因此只能排除这两个方案。</p>
 <p><img src="https://kiritoa.github.io/usr/uploads/2016/07/2782324303.png" alt="910gui.png"></p>
@@ -396,7 +504,7 @@ wndr4300_mtdlayout=mtdparts=ar934x-nfc:256k(u-boot)ro,256k(u-boot-env)ro,256k(ca
 <hr>
 <h2 id="折腾篇"><a href="#折腾篇" class="headerlink" title="折腾篇"></a>折腾篇</h2><h3 id="OpenMediaVault初体验"><a href="#OpenMediaVault初体验" class="headerlink" title="OpenMediaVault初体验"></a>OpenMediaVault初体验</h3><p>OMV总的来说也算是一个不错的系统，对于熟悉Linux的人来说实在是太方便，但是官方给出了这么一个需求：</p>
 <blockquote>
-<p><strong>System Drive</strong><br>The whole disc will be occupied by the System and swap space, so size doesn’t matter so much. Data storage on the system disc is not supported.<br>Spinning Harddisk, SSD, Disk-on-Module, CompactFlash or USB thumb drive type drives can be used as System Drive.<br><strong>If you use a Flash Drive, select one with static wear leveling, without it the drive will have a very short lifetime.</strong> It is also recommended to activate the Flash memory Plugin: (see Plug-ins) The entire disk is used as system disk. This disk can not be used to store user data.<br><em><a href="http://wiki.openmediavault.org/index.php?title=Prerequisites" target="_blank" rel="external">http://wiki.openmediavault.org/index.php?title=Prerequisites</a></em></p>
+<p><strong>System Drive</strong><br>The whole disc will be occupied by the System and swap space, so size doesn’t matter so much. Data storage on the system disc is not supported.<br>Spinning Harddisk, SSD, Disk-on-Module, CompactFlash or USB thumb drive type drives can be used as System Drive.<br><strong>If you use a Flash Drive, select one with static wear leveling, without it the drive will have a very short lifetime.</strong> It is also recommended to activate the Flash memory Plugin: (see Plug-ins) The entire disk is used as system disk. This disk can not be used to store user data.<br><em><a href="http://wiki.openmediavault.org/index.php?title=Prerequisites" target="_blank" rel="noopener">http://wiki.openmediavault.org/index.php?title=Prerequisites</a></em></p>
 </blockquote>
 <p>大致的意思就是，如果你使用Flash储存设备做系统盘的话，要找那些静态损耗均衡（就是类似SSD Trim技术的意思）的设备，不然的话很快就会完蛋，所以一定要找长擦写寿命的。使用SSD是个比较好的选择，系统安装好后虽然会把整个硬盘占用了，但是可以自行分区腾出空间供作储存。但是手头上没有SSD硬盘空闲，电商逛了一圈现在一线大厂SSD 60G价格跟128/120G的都差不多价格，便宜的SSD又怕出问题。偶然看到有SLC U盘这么一样东西，据说寿命比普通U盘都要长，于是在淘宝找了个59包邮的SLC U盘，本来想着系统盘读写量又不是很大找个便宜点的U盘就算了（据说都是小作坊产品），而且这个是SLC储存理论上寿命也是可以的(Flag)。</p>
 <p><img src="https://kiritoa.github.io/usr/uploads/2016/07/3053182115.jpg" alt="T1YWYhXj8eXXc3ZFI2_043031.jpg_430x430q90.jpg"></p>
@@ -418,7 +526,7 @@ wndr4300_mtdlayout=mtdparts=ar934x-nfc:256k(u-boot)ro,256k(u-boot-env)ro,256k(ca
 <hr>
 <p>Round5：手头没SSD始终比较麻烦，能安装到U盘的NAS系统还有FreeNAS、NAS4Free，虽然是有8G内存达到要求，但没有ECC始终是一个风险，因为ZFS文件系统极度依赖内存的可靠性（数据无价）。看看手头上剩下的选择，虽然有些无奈，但只有黑群晖可以选择了。</p>
 <h3 id="黑群晖折腾篇"><a href="#黑群晖折腾篇" class="headerlink" title="黑群晖折腾篇"></a>黑群晖折腾篇</h3><p>群晖的系统都会在每一块硬盘安装一份，而不是安装在U盘，U盘只会在开机做引导作用，至少不会那么容易被玩坏。。</p>
-<p>Round6：黑群晖安装教程可以参考这个<a href="http://www.nasyun.com/thread-24296-1-1.html" target="_blank" rel="external">帖子</a>，不过建议黑群晖版本去官网找个新版本些的，<a href="http://xpenology.me/downloads/" target="_blank" rel="external">XPEnology黑群晖官网下载</a>。</p>
+<p>Round6：黑群晖安装教程可以参考这个<a href="http://www.nasyun.com/thread-24296-1-1.html" target="_blank" rel="noopener">帖子</a>，不过建议黑群晖版本去官网找个新版本些的，<a href="http://xpenology.me/downloads/" target="_blank" rel="noopener">XPEnology黑群晖官网下载</a>。</p>
 <p>按照教程修改引导镜像，写入U盘，第一次引导时要在启动菜单选择Install/Upgrade一项，进行群晖系统的安装。</p>
 <p>使用Synology Assistant很快就可以找到NAS的机器</p>
 <p><img src="https://kiritoa.github.io/usr/uploads/2016/07/3848539345.png" alt="Untitled.png"></p>
@@ -517,7 +625,7 @@ Something wicked happened resolving &apos;packages.openmediavault.org:http&apos;
 </ul>
 <p>远程下载Linux下的解决方案有迅雷Linux版<strong>xware</strong>，在OMV安装配置略麻烦，而且开启迅雷后所有硬盘无法休眠。由于目前没有24小时下载的需求，以后有需要再进一步研究。</p>
 <p>软路由本来是打算在Virtualbox安装Openwrt，用一只无线网卡做AP。但配置起来比有线网卡要麻烦得多，初始化配置需要有线网卡，只好待有线网卡部署到位再进行配置。</p>
-<h2 id="附录：NAS系统组合方案"><a href="#附录：NAS系统组合方案" class="headerlink" title="附录：NAS系统组合方案"></a>附录：NAS系统组合方案</h2><p>关于NAS安装系统的方案，知乎上有一个问题“<a href="https://www.zhihu.com/question/21359049" target="_blank" rel="external">自己家里搭建NAS服务器有什么好方案</a>”推荐看一看，其中答主<strong>MarKAde</strong>的总结比较好，简单归纳为以下几种：</p>
+<h2 id="附录：NAS系统组合方案"><a href="#附录：NAS系统组合方案" class="headerlink" title="附录：NAS系统组合方案"></a>附录：NAS系统组合方案</h2><p>关于NAS安装系统的方案，知乎上有一个问题“<a href="https://www.zhihu.com/question/21359049" target="_blank" rel="noopener">自己家里搭建NAS服务器有什么好方案</a>”推荐看一看，其中答主<strong>MarKAde</strong>的总结比较好，简单归纳为以下几种：</p>
 <ol>
 <li>NAS单系统</li>
 <li>Windows+DSM双系统，DSM作为主要存储、共享系统</li>
@@ -536,7 +644,7 @@ Something wicked happened resolving &apos;packages.openmediavault.org:http&apos;
     
     </summary>
     
-      <category term="技术" scheme="https://kiritox.me/categories/%E6%8A%80%E6%9C%AF/"/>
+      <category term="Tech" scheme="https://kiritox.me/categories/Tech/"/>
     
     
       <category term="NAS" scheme="https://kiritox.me/tags/NAS/"/>
@@ -552,7 +660,7 @@ Something wicked happened resolving &apos;packages.openmediavault.org:http&apos;
     <link href="https://kiritox.me/archives/nas-build-hardware-solution.html"/>
     <id>https://kiritox.me/archives/nas-build-hardware-solution.html</id>
     <published>2016-06-27T14:19:00.000Z</published>
-    <updated>2016-12-06T16:13:49.022Z</updated>
+    <updated>2019-03-17T15:53:46.288Z</updated>
     
     <content type="html"><![CDATA[<p>大概一年前就已经有打造NAS这个计划，不过因为各种原因一直没付诸于实践，最近因为把台式的CPU和主板二手出了终于是把这个计划提上了日程。经过一番Google和逛各种论坛对目前流行的NAS的硬件方案做了一下总结</p>
 <a id="more"></a>
@@ -560,11 +668,11 @@ Something wicked happened resolving &apos;packages.openmediavault.org:http&apos;
 <h2 id="品牌NAS"><a href="#品牌NAS" class="headerlink" title="品牌NAS"></a>品牌NAS</h2><p>品牌NAS的特点是提供好软硬件一套的解决方案，配置简单易于上手，甚至手机也有配套客户端。其中最出名的品牌就是群晖和QNAP，缺点是但价格往往较高，同等价位下DIY方案或服务器的性能足以秒掉其几条街。实际上，品牌NAS的主要价值在于软件。</p>
 <p>品牌NAS方案2盘位性价比还是不错的，但4盘位版本通通都要4000+，之前考虑过实在是接受不了放弃了。</p>
 <p><img src="https://kiritoa.github.io/usr/uploads/2016/07/909682240.png" alt="top.png"></p>
-<h2 id="服务器整机"><a href="#服务器整机" class="headerlink" title="服务器整机"></a>服务器整机</h2><p>说到NAS服务器最出名的那绝对是<strong>HP ProLiant MicroServer Gen8</strong>，2013年推出的微型服务器至今都还是大热门，相关评测很多，一搜一大把，推荐看看chiphell上的<a href="https://www.chiphell.com/thread-1196090-1-1.html" target="_blank" rel="external">总结贴</a>，现在德国海淘价格在1700左右不包税。</p>
+<h2 id="服务器整机"><a href="#服务器整机" class="headerlink" title="服务器整机"></a>服务器整机</h2><p>说到NAS服务器最出名的那绝对是<strong>HP ProLiant MicroServer Gen8</strong>，2013年推出的微型服务器至今都还是大热门，相关评测很多，一搜一大把，推荐看看chiphell上的<a href="https://www.chiphell.com/thread-1196090-1-1.html" target="_blank" rel="noopener">总结贴</a>，现在德国海淘价格在1700左右不包税。</p>
 <p><img src="https://kiritoa.github.io/usr/uploads/2016/07/1838794806.png" alt="c03760124.png"></p>
 <p><img src="https://kiritoa.github.io/usr/uploads/2016/07/1170288646.jpg" alt="profile_3_big.jpg"></p>
 <p><em>关于HP ProLiant MicroServer N54l：这是Gen8的前任，这一款型号比较旧现在已经彻底退出市场了。</em></p>
-<p>另外还可以看看这个<a href="https://www.chiphell.com/forum.php?mod=viewthread&amp;tid=1586285&amp;extra=page%3D2%26filter%3Dtypeid%26typeid%3D479" target="_blank" rel="external">横向对比</a>，个人觉得<strong>HP ML10 Gen9</strong>低配版也是一个不错的方案，低配版CPU是6代Intel G4400，300美金左右。<br>服务器整机性价比一般都比较高，如果自己DIY组装，单独购买服务器级别的硬件反而会贵很多，因此建议直接购买服务器整机比较好。</p>
+<p>另外还可以看看这个<a href="https://www.chiphell.com/forum.php?mod=viewthread&amp;tid=1586285&amp;extra=page%3D2%26filter%3Dtypeid%26typeid%3D479" target="_blank" rel="noopener">横向对比</a>，个人觉得<strong>HP ML10 Gen9</strong>低配版也是一个不错的方案，低配版CPU是6代Intel G4400，300美金左右。<br>服务器整机性价比一般都比较高，如果自己DIY组装，单独购买服务器级别的硬件反而会贵很多，因此建议直接购买服务器整机比较好。</p>
 <h2 id="DIY组装"><a href="#DIY组装" class="headerlink" title="DIY组装"></a>DIY组装</h2><p>DIY方案优势在于配置灵活，便于升级和更换零件。搭建平台时首先要考虑的是CPU和主板，因为其他部件都需要根据这里的选择来确定。</p>
 <h3 id="CPU-主板"><a href="#CPU-主板" class="headerlink" title="CPU+主板"></a>CPU+主板</h3><h4 id="家用芯片组"><a href="#家用芯片组" class="headerlink" title="家用芯片组"></a>家用芯片组</h4><p><em>按价格/性能/功耗低到高排列，主板如无注明均为ITX规格</em></p>
 <p><strong>方案1</strong>：ASROCK J3160-ITX（主板集成CPU，推荐）  -  508元<br>此方案使用Intel J3160低功耗CPU，与Intel N3150和Intel J1900均为国内常见方案，也是品牌NAS一些高端配置的CPU，但后两款是旧一代产品不优先考虑。主板有4xSATA3接口，一个PCI-E插槽和一个Mini-PCIE插槽，使用笔记本DDR3内存。</p>
@@ -608,7 +716,7 @@ Something wicked happened resolving &apos;packages.openmediavault.org:http&apos;
     
     </summary>
     
-      <category term="技术" scheme="https://kiritox.me/categories/%E6%8A%80%E6%9C%AF/"/>
+      <category term="Tech" scheme="https://kiritox.me/categories/Tech/"/>
     
     
       <category term="NAS" scheme="https://kiritox.me/tags/NAS/"/>
@@ -620,10 +728,9 @@ Something wicked happened resolving &apos;packages.openmediavault.org:http&apos;
     <link href="https://kiritox.me/archives/learn-arduino-rather-than-mcu.html"/>
     <id>https://kiritox.me/archives/learn-arduino-rather-than-mcu.html</id>
     <published>2016-06-07T09:43:00.000Z</published>
-    <updated>2016-12-06T16:13:24.221Z</updated>
+    <updated>2019-03-17T15:53:41.680Z</updated>
     
-    <content type="html"><![CDATA[<p>突然想起一个很重要的问题，为什么大家（包括我）都认为参加电子设计大赛，或者做点什么制作都非得要先学好单片机，还有模电数电这些基础知识？</p>
-<p><em>本文针对还没有足够专业知识的同学，大神可忽略~</em></p>
+    <content type="html"><![CDATA[<p>突然想起一个很重要的问题，为什么大家（包括我）都认为参加电子设计大赛，或者做点什么制作都非得要先学好单片机，还有模电数电这些基础知识？<br><em>本文针对还没有足够专业知识的同学，大神可忽略~</em></p>
 <a id="more"></a>
 <p>在实验室的时候，每当有师弟（师妹）来问“怎样才能弄出这个东西？”大家通常都会说“先学好单片机基础啦，像操作IO口啊，至少点亮个LED先，还有中断定时器串口I2CSPI什么的，然后就是学习控制一些芯片模块啊，对了还有模电数电基础，画电路板，做板要转印显影腐蚀，最后焊接调试。。。”如果不是对这些非常有兴趣的同学估计都要光速逃跑了。然后实验室留下的，都是对电子制作抱有强烈兴趣，能学下去的同学。</p>
 <p>直到今天我才想起一个最基本的问题，我们学这些的最终目的：</p>
@@ -673,7 +780,7 @@ Something wicked happened resolving &apos;packages.openmediavault.org:http&apos;
 <p><strong>“51单片机好难用啊”</strong></p>
 <p>虽然我最开始不是从Arduino学起，都是先学习51单片机，但当我接触AVR后，我就发现</p>
 <p><strong>卧槽我一定是我用过最爽的单片机</strong>（手动滑稽</p>
-<p>最后，更多Arduino信息可以在官方网站了解更多<a href="https://www.arduino.cc" target="_blank" rel="external">https://www.arduino.cc</a></p>
+<p>最后，更多Arduino信息可以在官方网站了解更多<a href="https://www.arduino.cc" target="_blank" rel="noopener">https://www.arduino.cc</a></p>
 <hr>
 <p>如果还有同学有兴趣并看到这个地方的话</p>
 <ul>
@@ -684,12 +791,11 @@ Something wicked happened resolving &apos;packages.openmediavault.org:http&apos;
     
     <summary type="html">
     
-      &lt;p&gt;突然想起一个很重要的问题，为什么大家（包括我）都认为参加电子设计大赛，或者做点什么制作都非得要先学好单片机，还有模电数电这些基础知识？&lt;/p&gt;
-&lt;p&gt;&lt;em&gt;本文针对还没有足够专业知识的同学，大神可忽略~&lt;/em&gt;&lt;/p&gt;
+      &lt;p&gt;突然想起一个很重要的问题，为什么大家（包括我）都认为参加电子设计大赛，或者做点什么制作都非得要先学好单片机，还有模电数电这些基础知识？&lt;br&gt;&lt;em&gt;本文针对还没有足够专业知识的同学，大神可忽略~&lt;/em&gt;&lt;/p&gt;
     
     </summary>
     
-      <category term="技术" scheme="https://kiritox.me/categories/%E6%8A%80%E6%9C%AF/"/>
+      <category term="Tech" scheme="https://kiritox.me/categories/Tech/"/>
     
     
       <category term="Arduino" scheme="https://kiritox.me/tags/Arduino/"/>
@@ -705,17 +811,17 @@ Something wicked happened resolving &apos;packages.openmediavault.org:http&apos;
     <link href="https://kiritox.me/archives/modify-install-language-and-upgrade.html"/>
     <id>https://kiritox.me/archives/modify-install-language-and-upgrade.html</id>
     <published>2016-05-25T09:32:00.000Z</published>
-    <updated>2016-12-06T16:13:48.510Z</updated>
+    <updated>2018-02-04T09:35:06.649Z</updated>
     
     <content type="html"><![CDATA[<p>本文方法适用场景：希望把系统升级到另一个语言的系统版本（作为原生语言），而不需要额外添加语言包。适用于Windows7/8/8.1使用ISO升级安装。</p>
 <a id="more"></a>
-<h2 id="Step-1：把Windows界面语言设置为目标语言"><a href="#Step-1：把Windows界面语言设置为目标语言" class="headerlink" title="Step 1：把Windows界面语言设置为目标语言"></a>Step 1：把Windows界面语言设置为目标语言</h2><p><strong>A: Windows 7环境（非Ultimate版本）</strong><br>使用<a href="http://www.froggie.sk/en/index.html" target="_blank" rel="external">Vistalizator</a>修改</p>
-<p><strong>B: Windows 7 Ultimate/Windows 8/Windows 8.1（单语言版除外）</strong><br>参考微软官方文档即可<br><a href="http://windows.microsoft.com/zh-cn/windows7/install-or-change-a-display-language" target="_blank" rel="external">Windows 7 Ultimate</a><br><a href="http://windows.microsoft.com/zh-cn/windows-8/add-language-keyboard" target="_blank" rel="external">Windows 8/Windows 8.1</a></p>
+<h2 id="Step-1：把Windows界面语言设置为目标语言"><a href="#Step-1：把Windows界面语言设置为目标语言" class="headerlink" title="Step 1：把Windows界面语言设置为目标语言"></a>Step 1：把Windows界面语言设置为目标语言</h2><p><strong>A: Windows 7环境（非Ultimate版本）</strong><br>使用<a href="http://www.froggie.sk/en/index.html" target="_blank" rel="noopener">Vistalizator</a>修改</p>
+<p><strong>B: Windows 7 Ultimate/Windows 8/Windows 8.1（单语言版除外）</strong><br>参考微软官方文档即可<br><a href="http://windows.microsoft.com/zh-cn/windows7/install-or-change-a-display-language" target="_blank" rel="noopener">Windows 7 Ultimate</a><br><a href="http://windows.microsoft.com/zh-cn/windows-8/add-language-keyboard" target="_blank" rel="noopener">Windows 8/Windows 8.1</a></p>
 <h2 id="Step-2：修改注册表键值"><a href="#Step-2：修改注册表键值" class="headerlink" title="Step 2：修改注册表键值"></a>Step 2：修改注册表键值</h2><p><em>如果不执行Step 1就执行这一步，直接升级时会出现无法选择“保留应用方式升级安装”的选项，因为系统语言与镜像的语言不一致</em></p>
-<p>参考自<a href="http://www.ithome.com/html/win10/203571.htm" target="_blank" rel="external">http://www.ithome.com/html/win10/203571.htm</a></p>
+<p>参考自<a href="http://www.ithome.com/html/win10/203571.htm" target="_blank" rel="noopener">http://www.ithome.com/html/win10/203571.htm</a></p>
 <blockquote>
 <p>Windows系统在注册表中有记录专门记录安装语言的键值，<br>1、按Win+R打开运行，输入regedit回车打开注册表编辑器；<br>2、展开以下位置：<br>HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Nls\Language<br>3、在右侧最底部找到名为InstallLanguage的注册表键值，该键值即代表系统的显示语言。我们要做的就是将其修改为想要升级到的系统语言代码即可，如下图所示：<br><img src="https://kiritoa.github.io/usr/uploads/2016/05/20160127_111010_307.jpg" alt="注册表位置"></p>
-<p>比如，现有系统有英文，你想升级到的系统为简体中文版，则将其修改为0804。反之，如果现有系统为中文，想要升级到英文版系统，则将其修改为0409。不同国家或地区语言代码可<a href="https://msdn.microsoft.com/en-US/goglobal/bb964664.aspx" target="_blank" rel="external">点此查看</a></p>
+<p>比如，现有系统有英文，你想升级到的系统为简体中文版，则将其修改为0804。反之，如果现有系统为中文，想要升级到英文版系统，则将其修改为0409。不同国家或地区语言代码可<a href="https://msdn.microsoft.com/en-US/goglobal/bb964664.aspx" target="_blank" rel="noopener">点此查看</a></p>
 </blockquote>
 <h2 id="Step-3：执行升级安装"><a href="#Step-3：执行升级安装" class="headerlink" title="Step 3：执行升级安装"></a>Step 3：执行升级安装</h2><p>至此你的系统的默认语言已经完全改掉，再将不需要的语言包删除，那么你的系统已经变成原生目标语言版本的系统了，最后执行新系统的升级安装即可</p>
 ]]></content>
@@ -726,7 +832,7 @@ Something wicked happened resolving &apos;packages.openmediavault.org:http&apos;
     
     </summary>
     
-      <category term="技术" scheme="https://kiritox.me/categories/%E6%8A%80%E6%9C%AF/"/>
+      <category term="Windows" scheme="https://kiritox.me/categories/Windows/"/>
     
     
       <category term="Windows" scheme="https://kiritox.me/tags/Windows/"/>
@@ -738,7 +844,7 @@ Something wicked happened resolving &apos;packages.openmediavault.org:http&apos;
     <link href="https://kiritox.me/archives/solve-typecho-rewrite-upload-problem.html"/>
     <id>https://kiritox.me/archives/solve-typecho-rewrite-upload-problem.html</id>
     <published>2016-04-25T05:21:00.000Z</published>
-    <updated>2016-12-06T16:13:45.625Z</updated>
+    <updated>2019-03-31T09:56:11.481Z</updated>
     
     <content type="html"><![CDATA[<p>在设置Typecho过程中发现始终无法启用地址重写功能，一直弹出”重写功能检测失败, 请检查你的服务器设置”的提示。</p>
 <p><img src="https://kiritoa.github.io/usr/uploads/2016/04/2955989631.png" alt="重写功能检测失败, 请检查你的服务器设置"></p>
@@ -761,9 +867,10 @@ RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^(.*)$ /blog/index.php/$1 [L]
 &lt;/IfModule&gt;
 </code></pre><p>这时才发现问题，我把博客和他一样都放到了<code>/blog</code>目录下面，而一般博客都是直接放根目录，所以上面的代码是可以用的。总结来说都是因为自己没有好好理解rewrite语法的含义。</p>
-<p>另外在写这篇文章的时候又发现图片上传不了的问题，经测试是<code>/usr/uploads</code>目录的用户和用户组设置问题引起。因为Apache以<code>www-data</code>身份运行，网页中上传文件时使用了Apache用户的身份，若目录的所有者和用户组不是<code>www-data</code>的话，会出现权限不足而无法上传的情况，解决方案是在博客根目录执行以下命令：</p>
+<p><del>另外在写这篇文章的时候又发现图片上传不了的问题，经测试还要把<code>/usr/uploads</code>目录改成<code>666</code>(原文的<code>777</code>权限过大，已更正)权限才可以正常上传文件。</del></p>
+<p>Typecho无法上传图片的问题实质上是<code>/usr/uploads</code>目录权限的问题，因为是Apache以www-data身份运行，若目录的所有者和用户组不是以www-data的话，会出现权限不足而无法上传的情况，解决方案是在博客根目录执行以下命令：</p>
 <pre><code>chown -R www-data:www-data usr/uploads/
-</code></pre><p>将相关目录所有者和用户组均设置为www-data，<code>/usr/uploads</code>目录读写权限保持默认<code>755</code>即可。</p>
+</code></pre><p>将相关目录所有者和用户组均设置为www-data，<code>/usr/uploads</code>目录读写权限保持默认即可。</p>
 ]]></content>
     
     <summary type="html">
@@ -774,14 +881,14 @@ RewriteRule ^(.*)$ /blog/index.php/$1 [L]
     
     </summary>
     
-      <category term="技术" scheme="https://kiritox.me/categories/%E6%8A%80%E6%9C%AF/"/>
+      <category term="Tech" scheme="https://kiritox.me/categories/Tech/"/>
     
     
       <category term="Typecho" scheme="https://kiritox.me/tags/Typecho/"/>
     
       <category term="Apache" scheme="https://kiritox.me/tags/Apache/"/>
     
-      <category term="htaccess" scheme="https://kiritox.me/tags/htaccess/"/>
+      <category term=".htaccess" scheme="https://kiritox.me/tags/htaccess/"/>
     
       <category term="rewrite" scheme="https://kiritox.me/tags/rewrite/"/>
     
@@ -792,16 +899,16 @@ RewriteRule ^(.*)$ /blog/index.php/$1 [L]
     <link href="https://kiritox.me/archives/first-blog.html"/>
     <id>https://kiritox.me/archives/first-blog.html</id>
     <published>2016-04-23T12:55:00.000Z</published>
-    <updated>2016-12-04T12:42:25.593Z</updated>
+    <updated>2016-12-04T12:42:25.594Z</updated>
     
-    <content type="html"><![CDATA[<p>其实好久以前就想部署个博客耍耍，不过一直没有提上过日程，想着又要服务器又要域名各种麻烦什么的。近段时间心血来潮想写文章，今天终于下定决心在我的御用<a href="https://bandwagonhost.com/" target="_blank" rel="external">Bandwagonhost</a>主机部署好了，嘛虽然<del>连域名还没决定好</del>被人吐槽域名中二(ˉ﹃ˉ)<br>反正很快就会<del>弄好域名然后</del>正式写文章了<em>(:3 」∠ )</em></p>
+    <content type="html"><![CDATA[<p>其实好久以前就想部署个博客耍耍，不过一直没有提上过日程，想着又要服务器又要域名各种麻烦什么的。近段时间心血来潮想写文章，今天终于下定决心在我的御用<a href="https://bandwagonhost.com/" target="_blank" rel="noopener">Bandwagonhost</a>主机部署好了，嘛虽然<del>连域名还没决定好</del>被人吐槽域名中二(ˉ﹃ˉ)<br>反正很快就会<del>弄好域名然后</del>正式写文章了<em>(:3 」∠ )</em></p>
 <hr>
-<p>想起第一次想弄网站是小学的时候，不过那时纯粹是玩玩的性质，也不可能有资金可以买域名，租服务器什么的（当年的互联网环境和现在也不一样），只能在自己的电脑上用花生壳+Apache建起网站玩一下。<br>2015年因为GFW发大招的契机租了个Bandwagonhost的VPS作为翻墙服务器用，不过没多久就因为网速过慢就很少再用它了（作为后备服务器）。不过长大了再想建服务器才发现，这特么一点都不简单啊，光是搭服务器就要会各种Linux命令，自己维护服务器和做备份什么的，还要提心吊胆哪天被人攻击，当年的我还是太天真了( ×ω× )<br>虽然自建服务器后也有考虑过要不要挂个博客上去，不过一直都没明确的目标去实现，近段时间心血来潮想写写文章，终于是把建博客的事情提上了日程，一开始是考虑在github上建博客，不过试用了下觉得还是不如专门的博客程序来得方便，经过大神师弟<a href="https://yian.me" target="_blank" rel="external">Y!an</a>的建议，考虑到VPS的性能不足以驾驭<a href="https://zh.wikipedia.org/wiki/WordPress" target="_blank" rel="external">WordPress</a>，最终确定了用<a href="https://zh.wikipedia.org/wiki/Typecho" target="_blank" rel="external">Typecho</a>来建博客。<br>虽然自建博客是麻烦点，不过好歹是自己服务器建的博客，可以随心所欲地写文章，不用担心国内博客网站和谐或者国外博客网站被墙的问题了（虽然域名还是有一定的风险）。</p>
+<p>想起第一次想弄网站是小学的时候，不过那时纯粹是玩玩的性质，也不可能有资金可以买域名，租服务器什么的（当年的互联网环境和现在也不一样），只能在自己的电脑上用花生壳+Apache建起网站玩一下。<br>2015年因为GFW发大招的契机租了个Bandwagonhost的VPS作为翻墙服务器用，不过没多久就因为网速过慢就很少再用它了（作为后备服务器）。不过长大了再想建服务器才发现，这特么一点都不简单啊，光是搭服务器就要会各种Linux命令，自己维护服务器和做备份什么的，还要提心吊胆哪天被人攻击，当年的我还是太天真了( ×ω× )<br>虽然自建服务器后也有考虑过要不要挂个博客上去，不过一直都没明确的目标去实现，近段时间心血来潮想写写文章，终于是把建博客的事情提上了日程，一开始是考虑在github上建博客，不过试用了下觉得还是不如专门的博客程序来得方便，经过大神师弟<a href="https://yian.me" target="_blank" rel="noopener">Y!an</a>的建议，考虑到VPS的性能不足以驾驭<a href="https://zh.wikipedia.org/wiki/WordPress" target="_blank" rel="noopener">WordPress</a>，最终确定了用<a href="https://zh.wikipedia.org/wiki/Typecho" target="_blank" rel="noopener">Typecho</a>来建博客。<br>虽然自建博客是麻烦点，不过好歹是自己服务器建的博客，可以随心所欲地写文章，不用担心国内博客网站和谐或者国外博客网站被墙的问题了（虽然域名还是有一定的风险）。</p>
 ]]></content>
     
     <summary type="html">
     
-      &lt;p&gt;其实好久以前就想部署个博客耍耍，不过一直没有提上过日程，想着又要服务器又要域名各种麻烦什么的。近段时间心血来潮想写文章，今天终于下定决心在我的御用&lt;a href=&quot;https://bandwagonhost.com/&quot; target=&quot;_blank&quot; rel=&quot;extern
+      &lt;p&gt;其实好久以前就想部署个博客耍耍，不过一直没有提上过日程，想着又要服务器又要域名各种麻烦什么的。近段时间心血来潮想写文章，今天终于下定决心在我的御用&lt;a href=&quot;https://bandwagonhost.com/&quot; target=&quot;_blank&quot; rel=&quot;noopen
     
     </summary>
     
