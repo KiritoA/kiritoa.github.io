@@ -96,23 +96,23 @@
 
 
 
-  <meta name="description" content="之前刷Openwrt的时候已经有人反映过说再也刷不回原厂固件，不过我是不太相信的，因为路由器本身有救砖模式。不过真正刷的时候还是折腾了好一阵子，但肯定是没问题的。这里结合网上的帖子和自己的研究分析了一下原因并列出解决步骤，本文适用于刷了OpenWrt或者DD-WRT的NETGEAR WNDR3700v4路由器，直接TFTP方式刷回原厂固件失败的情况。此方法也适用于WNDR4300，自行查找对应的固">
+  <meta name="description" content="之前刷 Openwrt 的时候已经有人反映过说再也刷不回原厂固件，不过我是不太相信的，因为路由器本身有救砖模式。不过真正刷的时候还是折腾了好一阵子，但肯定是没问题的。这里结合网上的帖子和自己的研究分析了一下原因并列出解决步骤，本文适用于刷了 OpenWrt 或者 DD-WRT 的 NETGEAR WNDR3700v4 路由器，直接 TFTP 方式刷回原厂固件失败的情况。此方法也适用于 WNDR43">
 <meta name="keywords" content="WNDR3700v4,Openwrt,NETGEAR,WNDR4300">
 <meta property="og:type" content="article">
 <meta property="og:title" content="WNDR3700v4刷回原厂固件">
 <meta property="og:url" content="https://kiritox.me/archives/flash-wndr3700v4-to-stock-firmware.html">
 <meta property="og:site_name" content="KiritoA&#39;s Blog">
-<meta property="og:description" content="之前刷Openwrt的时候已经有人反映过说再也刷不回原厂固件，不过我是不太相信的，因为路由器本身有救砖模式。不过真正刷的时候还是折腾了好一阵子，但肯定是没问题的。这里结合网上的帖子和自己的研究分析了一下原因并列出解决步骤，本文适用于刷了OpenWrt或者DD-WRT的NETGEAR WNDR3700v4路由器，直接TFTP方式刷回原厂固件失败的情况。此方法也适用于WNDR4300，自行查找对应的固">
+<meta property="og:description" content="之前刷 Openwrt 的时候已经有人反映过说再也刷不回原厂固件，不过我是不太相信的，因为路由器本身有救砖模式。不过真正刷的时候还是折腾了好一阵子，但肯定是没问题的。这里结合网上的帖子和自己的研究分析了一下原因并列出解决步骤，本文适用于刷了 OpenWrt 或者 DD-WRT 的 NETGEAR WNDR3700v4 路由器，直接 TFTP 方式刷回原厂固件失败的情况。此方法也适用于 WNDR43">
 <meta property="og:locale" content="en">
 <meta property="og:image" content="https://kiritox.me/usr/uploads/2016/12/3394940427.png">
 <meta property="og:image" content="https://kiritox.me/usr/uploads/2016/12/344266447.png">
 <meta property="og:image" content="https://kiritox.me/usr/uploads/2016/12/136554523.png">
 <meta property="og:image" content="https://kiritox.me/usr/uploads/2016/12/701989518.png">
 <meta property="og:image" content="https://kiritox.me/usr/uploads/2016/11/1620348105.png">
-<meta property="og:updated_time" content="2019-04-01T13:48:34.595Z">
+<meta property="og:updated_time" content="2019-08-29T14:49:01.466Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="WNDR3700v4刷回原厂固件">
-<meta name="twitter:description" content="之前刷Openwrt的时候已经有人反映过说再也刷不回原厂固件，不过我是不太相信的，因为路由器本身有救砖模式。不过真正刷的时候还是折腾了好一阵子，但肯定是没问题的。这里结合网上的帖子和自己的研究分析了一下原因并列出解决步骤，本文适用于刷了OpenWrt或者DD-WRT的NETGEAR WNDR3700v4路由器，直接TFTP方式刷回原厂固件失败的情况。此方法也适用于WNDR4300，自行查找对应的固">
+<meta name="twitter:description" content="之前刷 Openwrt 的时候已经有人反映过说再也刷不回原厂固件，不过我是不太相信的，因为路由器本身有救砖模式。不过真正刷的时候还是折腾了好一阵子，但肯定是没问题的。这里结合网上的帖子和自己的研究分析了一下原因并列出解决步骤，本文适用于刷了 OpenWrt 或者 DD-WRT 的 NETGEAR WNDR3700v4 路由器，直接 TFTP 方式刷回原厂固件失败的情况。此方法也适用于 WNDR43">
 <meta name="twitter:image" content="https://kiritox.me/usr/uploads/2016/12/3394940427.png">
 
 
@@ -440,58 +440,56 @@
       
 
       
-        <p>之前刷Openwrt的时候已经有人反映过说再也刷不回原厂固件，不过我是不太相信的，因为路由器本身有救砖模式。不过真正刷的时候还是折腾了好一阵子，但肯定是没问题的。这里结合网上的帖子和自己的研究分析了一下原因并列出解决步骤，本文适用于刷了OpenWrt或者DD-WRT的NETGEAR WNDR3700v4路由器，直接TFTP方式刷回原厂固件失败的情况。此方法也适用于WNDR4300，自行查找对应的固件刷入即可。</p>
+        <p>之前刷 Openwrt 的时候已经有人反映过说再也刷不回原厂固件，不过我是不太相信的，因为路由器本身有救砖模式。不过真正刷的时候还是折腾了好一阵子，但肯定是没问题的。这里结合网上的帖子和自己的研究分析了一下原因并列出解决步骤，本文适用于刷了 OpenWrt 或者 DD-WRT 的 NETGEAR WNDR3700v4 路由器，直接 TFTP 方式刷回原厂固件失败的情况。此方法也适用于 WNDR4300，自行查找对应的固件刷入即可。</p>
 <a id="more"></a>
-<h2 id="原因分析"><a href="#原因分析" class="headerlink" title="原因分析"></a>原因分析</h2><p>本人之前使用的是<strong>openwrt 15.01</strong>版本，TFTP刷回原厂固件表现为路由器Power指示灯一直是橙色，似乎还不断地自动重启，因此常规的救砖方式无效。先上结论，刷回原版固件出问题基本都是因为刷入第三方固件时<strong>破坏了路由器里面Flash的分区</strong>。</p>
-<p>WNDR3700v4里面的Flash也有空间是用来存放设置，uboot等内容，各自存放在不同的分区，而firmware部分才是真正的存放Openwrt系统的地方，Openwrt里面看到的可用空间也是这部分的内容。而刷入的img文件（平时说的固件）其实也包括了整个Flash的分区信息。</p>
-<p>根据Openwrt官网WNDR4300 Flash布局的<a href="https://wiki.openwrt.org/zh-cn/toh/netgear/wndr4300" target="_blank" rel="noopener">说明</a>，WNDR3700v4/WNDR4300（两款型号硬件基本一致，也都使用NAND Flash）原版固件的Flash布局（为方便理解统一称为分区）是这样的：</p>
+<h2 id="原因分析"><a href="#原因分析" class="headerlink" title="原因分析"></a>原因分析</h2><p>本人之前使用的是<strong>openwrt 15.01</strong>版本，TFTP 刷回原厂固件表现为路由器 Power 指示灯一直是橙色，似乎还不断地自动重启，因此常规的救砖方式无效。先上结论，刷回原版固件出问题基本都是因为刷入第三方固件时<strong>破坏了路由器里面 Flash 的分区</strong>。</p>
+<p>WNDR3700v4 里面的 Flash 也有空间是用来存放设置，uboot 等内容，各自存放在不同的分区，而 firmware 部分才是真正的存放 Openwrt 系统的地方，Openwrt 里面看到的可用空间也是这部分的内容。而刷入的 img 文件（平时说的固件）其实也包括了整个 Flash 的分区信息。</p>
+<p>根据 Openwrt 官网 WNDR4300 Flash 布局的<a href="https://wiki.openwrt.org/zh-cn/toh/netgear/wndr4300" target="_blank" rel="noopener">说明</a>，WNDR3700v4/WNDR4300（两款型号硬件基本一致，也都使用 NAND Flash）原版固件的 Flash 布局（为方便理解统一称为分区）是这样的：</p>
 <p><img src="https://kiritox.me/usr/uploads/2016/12/3394940427.png" alt="Screenshot 2016-12-03 09.35.17.png"></p>
-<p>Openwrt官方固件是这样的</p>
+<p>Openwrt 官方固件是这样的</p>
 <p><img src="https://kiritox.me/usr/uploads/2016/12/344266447.png" alt="Screenshot 2016-12-03 09.35.23.png"></p>
-<p>对比可以看出来Openwrt做到了和原版一致的Flash分区，因此正常情况下通过TFTP方式刷官方固件因为分区一致是不会有什么问题的。但是如果之前刷入过<strong>增加可用空间的改版Openwrt固件</strong>的话，原始的Flash分区就会被破坏。增加空间的代码是这样的：</p>
+<p>对比可以看出来 Openwrt 做到了和原版一致的 Flash 分区，因此正常情况下通过 TFTP 方式刷官方固件因为分区一致是不会有什么问题的。但是如果之前刷入过<strong>增加可用空间的改版 Openwrt 固件</strong>的话，原始的 Flash 分区就会被破坏。增加空间的代码是这样的：</p>
 <pre><code>wndr4300_mtdlayout=mtdparts=ar934x-nfc:256k(u-boot)ro,256k(u-boot-env)ro,256k(caldata),512k(pot),2048k(language),512k(config),3072k(traffic_meter),2048k(kernel),23552k(ubi),25600k@0x6c0000(firmware),256k(caldata_backup),-(reserved)
 改为（将ubi和firmware增加96M，完全使用128M flash）
 wndr4300_mtdlayout=mtdparts=ar934x-nfc:256k(u-boot)ro,256k(u-boot-env)ro,256k(caldata),512k(pot),2048k(language),512k(config),3072k(traffic_meter),2048k(kernel),121856k(ubi),123904k@0x6c0000(firmware),256k(caldata_backup),-(reserved)
-</code></pre><p>可以看出改版固件增大了<strong>ubi</strong>和<strong>firmware</strong>的空间，的确使得Openwrt实际可用空间变大，但同时也破坏了原始Flash的空间分配（其实就是利用了后面的reserved空间，但这样caldata_backup位置也会后移，已经变得和官方固件不一致），直接刷回原版固件就很有可能出现问题。</p>
-<p>而DD-WRT固件也同样会产生这个问题，其Flash分区如下：</p>
+</code></pre><p>可以看出改版固件增大了<strong>ubi</strong>和<strong>firmware</strong>的空间，的确使得 Openwrt 实际可用空间变大，但同时也破坏了原始 Flash 的空间分配（其实就是利用了后面的 reserved 空间，但这样 caldata_backup 位置也会后移，已经变得和官方固件不一致），直接刷回原版固件就很有可能出现问题。</p>
+<p>而 DD-WRT 固件也同样会产生这个问题，其 Flash 分区如下：</p>
 <table border="1"><br><tr align="center"><td rowspan="2">mtd0<br><b>RedBoot</b><br>512KiB</td><td rowspan="2">mtd5<br><b>board_config</b><br>512KiB</td><td rowspan="2">unused<br>2.5MiB</td><td rowspan="2">mtd4<br><b>nvram</b><br>512KiB</td><td rowspan="2">unused<br>3MiB</td><td colspan="3">mtd1 <b>linux</b> 124160KiB (121.25MiB)</td></tr><tr align="center"><td>unused<br>1152KiB</td><td>mtd2<br><b>rootfs</b><br>21504KiB</td><td>mtd3<br><b>ddwrt</b><br>101504KiB</td></tr></table>
 
-
-<p>其中linux分区在Flash上的地址对应的就是Openwrt和原版固件中frimware，caldata_backup和reserved的位置（0x0000006c0000-0x000008000000）。</p>
-<p>在TFTP模式下似乎并不会自动对flash执行erase命令（相当于格式化），仅仅覆盖了原来的内容，所以第三方固件的残留内容很有可能影响了原版固件的运作，因此需要手动执行该命令。为了方便擦除可以先把路由器刷到DD-WRT，然后对linux分区执行erase命令，把frimware以后的内容全部清空再刷回原版固件。</p>
+<p>其中 linux 分区在 Flash 上的地址对应的就是 Openwrt 和原版固件中 frimware，caldata_backup 和 reserved 的位置（0x0000006c0000-0x000008000000）。</p>
+<p>在 TFTP 模式下似乎并不会自动对 flash 执行 erase 命令（相当于格式化），仅仅覆盖了原来的内容，所以第三方固件的残留内容很有可能影响了原版固件的运作，因此需要手动执行该命令。为了方便擦除可以先把路由器刷到 DD-WRT，然后对 linux 分区执行 erase 命令，把 frimware 以后的内容全部清空再刷回原版固件。</p>
 <h2 id="固件和环境准备"><a href="#固件和环境准备" class="headerlink" title="固件和环境准备"></a>固件和环境准备</h2><ol>
-<li><p>在控制面板“启用或关闭windows功能”启用“TFTP客户端”组件。</p>
+<li><p>在控制面板“启用或关闭 windows 功能”启用“TFTP 客户端”组件。</p>
 </li>
-<li><p>在DD-WRT下载WNDR3700v4最新固件<a href="http://www.dd-wrt.com/wiki/index.php/Netgear_WNDR3700#v4" target="_blank" rel="noopener">ftp://ftp.dd-wrt.com/betas/2014/02-04-2014-r23503/netgear-wndr3700v4/wndr3700v4-factory.img</a>。</p>
+<li><p>在 DD-WRT 下载 WNDR3700v4 最新固件<a href="http://www.dd-wrt.com/wiki/index.php/Netgear_WNDR3700#v4" target="_blank" rel="noopener">ftp://ftp.dd-wrt.com/betas/2014/02-04-2014-r23503/netgear-wndr3700v4/wndr3700v4-factory.img</a>。</p>
 </li>
-<li><p>下载最新版固件，可选择国行（PRRU，中国俄罗斯特供版？）固件或者国际版固件，PRRU固件增加了IPTV，IP-MAC，脱机下载等国际版没有的功能，而国际版则版本较新，修复改进的项目比较多，各位可以自行斟酌选哪个版本。</p>
+<li><p>下载最新版固件，可选择中国/俄罗斯版(PRRU)固件或者国际版固件，PRRU 固件增加了 IPTV，IP-MAC，脱机下载等国际版没有的功能，而国际版则版本较新，修复改进的项目比较多，各位可以自行斟酌选哪个版本。</p>
 </li>
 </ol>
 <p><strong>Firmware Version 1.0.2.80 (All Regions Except China &amp; Russia)</strong><br><a href="http://www.downloads.netgear.com/files/GDC/WNDR3700V4/WNDR3700v4-V1.0.2.80.zip" target="_blank" rel="noopener">http://www.downloads.netgear.com/files/GDC/WNDR3700V4/WNDR3700v4-V1.0.2.80.zip</a></p>
 <p><strong>Firmware Version 1.0.1.60 (For China and Russia Only)</strong><br><a href="http://www.downloads.netgear.com/files/GDC/WNDR3700V4/WNDR3700v4_PRRU_FW_V1.0.1.60.zip" target="_blank" rel="noopener">http://www.downloads.netgear.com/files/GDC/WNDR3700V4/WNDR3700v4_PRRU_FW_V1.0.1.60.zip</a></p>
 <p>参考帖子:<br><a href="http://www.right.com.cn/forum/thread-185263-1-1.html" target="_blank" rel="noopener">http://www.right.com.cn/forum/thread-185263-1-1.html</a><br><a href="http://www.right.com.cn/forum/thread-154774-1-1.html" target="_blank" rel="noopener">http://www.right.com.cn/forum/thread-154774-1-1.html</a></p>
 <h2 id="实现"><a href="#实现" class="headerlink" title="实现"></a>实现</h2><ol>
-<li><p>路由器断电后按住RESET键开机，等待电源指示灯变成绿色闪烁状态时松开，用网线连接路由器，网卡IP设置成192.198.1.2（只要是同网段不是192.168.1.1的IP都可以），子网掩码255.255.255.0，网关设置192.168.1.1.</p>
+<li><p>路由器断电后按住 RESET 键开机，等待电源指示灯变成绿色闪烁状态时松开，用网线连接路由器，网卡 IP 设置成 192.198.1.2（只要是同网段不是 192.168.1.1 的 IP 都可以），子网掩码 255.255.255.0，网关设置 192.168.1.1.</p>
 </li>
-<li><p>打开命令行窗口，切换目录到DD-WRT固件文件所在的目录，执行 <code>tftp -i 192.168.1.1 put wndr3700v4-factory.img</code>，稍等一段时间，路由器自动重启，等待电源指示灯变成绿色常亮即启动完成，如果长时间显示橙色尝试断电后重新通电。</p>
+<li><p>打开命令行窗口，切换目录到 DD-WRT 固件文件所在的目录，执行 <code>tftp -i 192.168.1.1 put wndr3700v4-factory.img</code>，稍等一段时间，路由器自动重启，等待电源指示灯变成绿色常亮即启动完成，如果长时间显示橙色尝试断电后重新通电。</p>
 </li>
-<li><p>设置路由器，浏览器打开192.168.1.1，第一次登陆要先设置登陆用户名和密码，不更改默认会自动生成密码。主界面中点选Service选项卡，在下找到Secure Shell一栏，将SSHd改成Enabled，其他保持默认，按最底部的Apply Settings。然后切换到Administration选项卡，下面的Remote Access一栏，将SSH Management改成Enabled，其他保持默认，按最底部的Apply Settings。</p>
+<li><p>设置路由器，浏览器打开 192.168.1.1，第一次登陆要先设置登陆用户名和密码，不更改默认会自动生成密码。主界面中点选 Service 选项卡，在下找到 Secure Shell 一栏，将 SSHd 改成 Enabled，其他保持默认，按最底部的 Apply Settings。然后切换到 Administration 选项卡，下面的 Remote Access 一栏，将 SSH Management 改成 Enabled，其他保持默认，按最底部的 Apply Settings。</p>
 </li>
 </ol>
 <p><img src="https://kiritox.me/usr/uploads/2016/12/136554523.png" alt="Screenshot 2016-12-03 00.09.34.png"></p>
 <p><img src="https://kiritox.me/usr/uploads/2016/12/701989518.png" alt="Screenshot 2016-12-03 00.23.31.png"></p>
 <ol>
-<li>使用SSH工具登入，Windows平台个人推荐<a href="http://mobaxterm.mobatek.net/" target="_blank" rel="noopener">MobaXterm</a>，SSH登陆用户名为root，密码是之前设置的登陆密码，成功登陆后执行以下命令：</li>
+<li>使用 SSH 工具登入，Windows 平台个人推荐<a href="http://mobaxterm.mobatek.net/" target="_blank" rel="noopener">MobaXterm</a>，SSH 登陆用户名为 root，密码是之前设置的登陆密码，成功登陆后执行以下命令：</li>
 </ol>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line">mtd erase linux</div><div class="line">reboot</div></pre></td></tr></table></figure>
 <ol>
-<li><p>路由器自动重启，此时因为固件已被刷除自动进入TFTP模式，等待电源指示灯变成绿色闪烁，切换目录到原厂固件文件所在的目录，在命令行窗口根据下载的版本输入<code>tftp -i 192.168.1.1 put WNDR3700v4-V1.0.1.60PRRU.img</code> 或 <code>tftp -i 192.168.1.1 put WNDR3700v4-V1.0.2.80.img</code>稍等一段时间，路由器自动重启，如果启动失败尝试重新通电。</p>
+<li><p>路由器自动重启，此时因为固件已被刷除自动进入 TFTP 模式，等待电源指示灯变成绿色闪烁，切换目录到原厂固件文件所在的目录，在命令行窗口根据下载的版本输入<code>tftp -i 192.168.1.1 put WNDR3700v4-V1.0.1.60PRRU.img</code> 或 <code>tftp -i 192.168.1.1 put WNDR3700v4-V1.0.2.80.img</code>稍等一段时间，路由器自动重启，如果启动失败尝试重新通电。</p>
 </li>
-<li><p>把网卡改回自动获取IP地址，至此完成刷机步骤。</p>
+<li><p>把网卡改回自动获取 IP 地址，至此完成刷机步骤。</p>
 </li>
 </ol>
 <p><img src="https://kiritox.me/usr/uploads/2016/11/1620348105.png" alt="Screenshot 2016-11-23 16.07.45.png"></p>
-<p>不得不说原厂固件管理界面反应真的好慢啊，又想念用OpenWrt的日子了。。。</p>
 
       
     </div>
