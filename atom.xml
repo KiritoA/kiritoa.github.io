@@ -839,61 +839,6 @@ Something wicked happened resolving &apos;packages.openmediavault.org:http&apos;
   </entry>
   
   <entry>
-    <title>解决Typecho伪静态问题和图片上传问题</title>
-    <link href="https://kiritox.me/archives/solve-typecho-rewrite-upload-problem.html"/>
-    <id>https://kiritox.me/archives/solve-typecho-rewrite-upload-problem.html</id>
-    <published>2016-04-25T05:21:00.000Z</published>
-    <updated>2019-04-01T13:49:08.043Z</updated>
-    
-    <content type="html"><![CDATA[<p>在设置Typecho过程中发现始终无法启用地址重写功能，一直弹出”重写功能检测失败, 请检查你的服务器设置”的提示。</p>
-<p><img src="https://kiritox.me/usr/uploads/2016/04/2955989631.png" alt="重写功能检测失败, 请检查你的服务器设置"></p>
-<p><em>本文的运行环境为Apache</em></p>
-<a id="more"></a>
-<p>查阅网上的资料，解决方法基本都是在博客根目录下手工添加.htaccess并写上以下内容：</p>
-<pre><code>&lt;IfModule mod_rewrite.c&gt;
-RewriteEngine On
-RewriteBase /
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^(.*)$ /index.php/$1 [L]
-&lt;/IfModule&gt;
-</code></pre><p>并勾上”仍然想启用此功能”即可。然而这种方法测试了好多次都没有成功，rewrite模块是确实启用的了，检查了目录权限也查不出个结果，结果看到基友发来的.htaccess才发现问题，他的.htaccess是这样的：</p>
-<pre><code>&lt;IfModule mod_rewrite.c&gt;
-RewriteEngine On
-RewriteBase /blog/
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^(.*)$ /blog/index.php/$1 [L]
-&lt;/IfModule&gt;
-</code></pre><p>这时才发现问题，我把博客和他一样都放到了<code>/blog</code>目录下面，而一般博客都是直接放根目录，所以上面的代码是可以用的。总结来说都是因为自己没有好好理解rewrite语法的含义。</p>
-<p><del>另外在写这篇文章的时候又发现图片上传不了的问题，经测试还要把<code>/usr/uploads</code>目录改成<code>666</code>(原文的<code>777</code>权限过大，已更正)权限才可以正常上传文件。</del></p>
-<p>Typecho无法上传图片的问题实质上是<code>/usr/uploads</code>目录权限的问题，因为是Apache以www-data身份运行，若目录的所有者和用户组不是以www-data的话，会出现权限不足而无法上传的情况，解决方案是在博客根目录执行以下命令：</p>
-<pre><code>chown -R www-data:www-data usr/uploads/
-</code></pre><p>将相关目录所有者和用户组均设置为www-data，<code>/usr/uploads</code>目录读写权限保持默认即可。</p>
-]]></content>
-    
-    <summary type="html">
-    
-      &lt;p&gt;在设置Typecho过程中发现始终无法启用地址重写功能，一直弹出”重写功能检测失败, 请检查你的服务器设置”的提示。&lt;/p&gt;
-&lt;p&gt;&lt;img src=&quot;https://kiritox.me/usr/uploads/2016/04/2955989631.png&quot; alt=&quot;重写功能检测失败, 请检查你的服务器设置&quot;&gt;&lt;/p&gt;
-&lt;p&gt;&lt;em&gt;本文的运行环境为Apache&lt;/em&gt;&lt;/p&gt;
-    
-    </summary>
-    
-      <category term="Blog" scheme="https://kiritox.me/categories/Blog/"/>
-    
-    
-      <category term="Typecho" scheme="https://kiritox.me/tags/Typecho/"/>
-    
-      <category term="Apache" scheme="https://kiritox.me/tags/Apache/"/>
-    
-      <category term=".htaccess" scheme="https://kiritox.me/tags/htaccess/"/>
-    
-      <category term="rewrite" scheme="https://kiritox.me/tags/rewrite/"/>
-    
-  </entry>
-  
-  <entry>
     <title>第一篇</title>
     <link href="https://kiritox.me/archives/first-blog.html"/>
     <id>https://kiritox.me/archives/first-blog.html</id>

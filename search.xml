@@ -73,13 +73,6 @@
 
     
     <entry>
-      <title><![CDATA[解决Typecho伪静态问题和图片上传问题]]></title>
-      <url>%2Farchives%2Fsolve-typecho-rewrite-upload-problem.html</url>
-      <content type="text"><![CDATA[在设置Typecho过程中发现始终无法启用地址重写功能，一直弹出”重写功能检测失败, 请检查你的服务器设置”的提示。 本文的运行环境为Apache 查阅网上的资料，解决方法基本都是在博客根目录下手工添加.htaccess并写上以下内容： &lt;IfModule mod_rewrite.c&gt; RewriteEngine On RewriteBase / RewriteCond %{REQUEST_FILENAME} !-f RewriteCond %{REQUEST_FILENAME} !-d RewriteRule ^(.*)$ /index.php/$1 [L] &lt;/IfModule&gt; 并勾上”仍然想启用此功能”即可。然而这种方法测试了好多次都没有成功，rewrite模块是确实启用的了，检查了目录权限也查不出个结果，结果看到基友发来的.htaccess才发现问题，他的.htaccess是这样的： &lt;IfModule mod_rewrite.c&gt; RewriteEngine On RewriteBase /blog/ RewriteCond %{REQUEST_FILENAME} !-f RewriteCond %{REQUEST_FILENAME} !-d RewriteRule ^(.*)$ /blog/index.php/$1 [L] &lt;/IfModule&gt; 这时才发现问题，我把博客和他一样都放到了/blog目录下面，而一般博客都是直接放根目录，所以上面的代码是可以用的。总结来说都是因为自己没有好好理解rewrite语法的含义。 另外在写这篇文章的时候又发现图片上传不了的问题，经测试还要把/usr/uploads目录改成666(原文的777权限过大，已更正)权限才可以正常上传文件。 Typecho无法上传图片的问题实质上是/usr/uploads目录权限的问题，因为是Apache以www-data身份运行，若目录的所有者和用户组不是以www-data的话，会出现权限不足而无法上传的情况，解决方案是在博客根目录执行以下命令： chown -R www-data:www-data usr/uploads/ 将相关目录所有者和用户组均设置为www-data，/usr/uploads目录读写权限保持默认即可。]]></content>
-    </entry>
-
-    
-    <entry>
       <title><![CDATA[第一篇]]></title>
       <url>%2Farchives%2Ffirst-blog.html</url>
       <content type="text"><![CDATA[其实好久以前就想部署个博客耍耍，不过一直没有提上过日程，想着又要服务器又要域名各种麻烦什么的。近段时间心血来潮想写文章，今天终于下定决心在我的御用Bandwagonhost主机部署好了，嘛虽然连域名还没决定好被人吐槽域名中二(ˉ﹃ˉ)反正很快就会弄好域名然后正式写文章了(:3 」∠ ) 想起第一次想弄网站是小学的时候，不过那时纯粹是玩玩的性质，也不可能有资金可以买域名，租服务器什么的（当年的互联网环境和现在也不一样），只能在自己的电脑上用花生壳+Apache建起网站玩一下。2015年因为GFW发大招的契机租了个Bandwagonhost的VPS作为翻墙服务器用，不过没多久就因为网速过慢就很少再用它了（作为后备服务器）。不过长大了再想建服务器才发现，这特么一点都不简单啊，光是搭服务器就要会各种Linux命令，自己维护服务器和做备份什么的，还要提心吊胆哪天被人攻击，当年的我还是太天真了( ×ω× )虽然自建服务器后也有考虑过要不要挂个博客上去，不过一直都没明确的目标去实现，近段时间心血来潮想写写文章，终于是把建博客的事情提上了日程，一开始是考虑在github上建博客，不过试用了下觉得还是不如专门的博客程序来得方便，经过大神师弟Y!an的建议，考虑到VPS的性能不足以驾驭WordPress，最终确定了用Typecho来建博客。虽然自建博客是麻烦点，不过好歹是自己服务器建的博客，可以随心所欲地写文章，不用担心国内博客网站和谐或者国外博客网站被墙的问题了（虽然域名还是有一定的风险）。]]></content>
