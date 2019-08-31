@@ -366,40 +366,40 @@ wndr4300_mtdlayout=mtdparts=ar934x-nfc:256k(u-boot)ro,256k(u-boot-env)ro,256k(ca
     <link href="https://kiritox.me/archives/home-fiber-network-upgrade-log.html"/>
     <id>https://kiritox.me/archives/home-fiber-network-upgrade-log.html</id>
     <published>2016-11-22T12:22:00.000Z</published>
-    <updated>2019-04-01T13:48:41.459Z</updated>
+    <updated>2019-08-31T17:00:34.859Z</updated>
     
     <content type="html"><![CDATA[<p>电信的光纤升级改造计划已经搞了好几年，虽然一直都有想升级的想法，但是之前电信一直都说线路没有覆盖到不能升级，到了最近终于说是覆盖到小区了，不过去了电信营业厅问才知道升级也要收钱的( ˘･з･)没想到去完营业厅第二天电信（不是营业厅的人）就打电话来说现在要光进铜退，可以免费升光纤，我擦。。。。还好没同意升级不然白花钱了。</p>
 <a id="more"></a>
 <h2 id="配置"><a href="#配置" class="headerlink" title="配置"></a>配置</h2><p>言归正传，经过安装师傅一番布线，配置好了光纤，电信送的光猫是这样的：</p>
 <p><img src="https://kiritox.me/usr/uploads/2016/11/1861192054.jpg" alt="IMG_20161122_131849_2.jpg"></p>
-<p>光猫背后有两个网络接口，推测（后来在超级管理员管理界面证实）千兆口用来上网，百兆口是电信IPTV。另外电话就是普通的固话了，另外竟然还提供了个USB插口，未测试是不是可以插U盘做NAS之类的。</p>
-<p><img src="https://kiritox.me/uploads/2016/11/2011429110.jpg" alt="IMG_20161119_211219.jpg"></p>
-<p>默认光猫是带自动拨号的，连上光猫的wifi或者千兆网线就可以不用拨号立即上网，也就是所谓的<strong>路由模式</strong>，光猫充当路由器，对于一般用户来说这个设定已经很好用了。</p>
-<p>如果千兆口后面接二级路由器的话根据不同情况要分别设置：一种是千兆口接二级路由器的WAN口，此时路由器必须改成与光猫不同IP网段，不同品牌教程不一样，这里列一个<a href="http://service.tp-link.com.cn/detail_article_3241.html" target="_blank" rel="noopener">TP-LINK的参考</a>，新的TP-LINK路由器似乎可以自动识别并自动更改设置无需人工修改。</p>
-<p>一开始是打算就这样用路由模式也不错，但光猫只能更改很基本的设定，像DMZ，端口转发，DDNS这些功能通通不能设置，只能以<strong>超级管理员</strong>身份登入才能更改，但即使是这个管理界面反应慢，也不好设置，说白了就是光猫的固件烂。于是打算把光猫改成传说中的<strong>桥接模式</strong>，光猫仅仅起到<a href="https://zh.wikipedia.org/wiki/%E6%A9%8B%E6%8E%A5%E5%99%A8" target="_blank" rel="noopener">桥接作用</a>，让接在千兆口后面的路由器负责拨号和管理，这样就和以前用ADSL时的方式一样了。</p>
+<p>光猫背后有两个网络接口，推测（后来在超级管理员管理界面证实）千兆口用来上网，百兆口是电信 IPTV。另外电话就是普通的固话了，另外竟然还提供了个 USB 插口，未测试是不是可以插 U 盘做 NAS 之类的。</p>
+<p><img src="https://kiritox.me/usr/uploads/2016/11/2011429110.jpg" alt="IMG_20161119_211219.jpg"></p>
+<p>默认光猫是带自动拨号的，连上光猫的 wifi 或者千兆网线就可以不用拨号立即上网，也就是所谓的<strong>路由模式</strong>，光猫充当路由器，对于一般用户来说这个设定已经很好用了。</p>
+<p>如果千兆口后面接二级路由器的话根据不同情况要分别设置：一种是千兆口接二级路由器的 WAN 口，此时路由器必须改成与光猫不同 IP 网段，不同品牌教程不一样，这里列一个<a href="http://service.tp-link.com.cn/detail_article_3241.html" target="_blank" rel="noopener">TP-LINK 的参考</a>，新的 TP-LINK 路由器似乎可以自动识别并自动更改设置无需人工修改。</p>
+<p>一开始是打算就这样用路由模式也不错，但光猫只能更改很基本的设定，像 DMZ，端口转发，DDNS 这些功能通通不能设置，只能以<strong>超级管理员</strong>身份登入才能更改，但即使是这个管理界面反应慢，也不好设置，说白了就是光猫的固件烂。于是打算把光猫改成传说中的<strong>桥接模式</strong>，光猫仅仅起到<a href="https://zh.wikipedia.org/wiki/%E6%A9%8B%E6%8E%A5%E5%99%A8" target="_blank" rel="noopener">桥接作用</a>，让接在千兆口后面的路由器负责拨号和管理，这样就和以前用 ADSL 时的方式一样了。</p>
 <p><img src="https://kiritox.me/usr/uploads/2016/11/62885993.jpg" alt="天翼1.jpg"></p>
 <p><img src="https://kiritox.me/usr/uploads/2016/11/522741982.jpg" alt="ty2.jpg"></p>
 <p><img src="https://kiritox.me/usr/uploads/2016/11/1515762916.jpg" alt="ty3.jpg"></p>
-<p>不得不说这个web设置界面还是做的挺不错的，之前看过外国的一些营运商定制路由器也是类似这种界面，不过也是阉割各种高级功能就是了，而且还只能用营运商给的路由器拨号。</p>
+<p>不得不说这个 web 设置界面还是做的挺不错的，之前看过外国的一些营运商定制路由器也是类似这种界面，不过也是阉割各种高级功能就是了，而且还只能用营运商给的路由器拨号。</p>
 <p><img src="https://kiritox.me/usr/uploads/2016/11/1437351207.jpg" alt="ty4.jpg"></p>
 <p><img src="https://kiritox.me/usr/uploads/2016/11/2600077046.jpg" alt="ty5.jpg"></p>
-<p>网络设置就三个页面能改，然而都并没有什么卵用，顺便一提局域网地址一栏并不能改网段，把IP改成192.168.2.1然后你会发现DHCP居然还是分192.168.1.x的地址，这神bug。。</p>
+<p>网络设置就三个页面能改，然而都并没有什么卵用，顺便一提局域网地址一栏并不能改网段，把 IP 改成 192.168.2.1 然后你会发现 DHCP 居然还是分 192.168.1.x 的地址，这神 bug。。</p>
 <p>重头戏要来了，退出登录，重新输入传说中的超级管理员账号<strong>telecomadmin</strong>和密码<strong>nE7jA%5m</strong></p>
 <p><img src="https://kiritox.me/usr/uploads/2016/11/2615369543.png" alt="ty6.png"></p>
 <p>界面立马就不同了</p>
 <p><img src="https://kiritox.me/usr/uploads/2016/11/3243730675.png" alt="ty7.png"></p>
-<p>就是在这个页面把模式的Route改成Bridge，比较幸运没有遇到选项变灰不能修改的情况</p>
+<p>就是在这个页面把模式的 Route 改成 Bridge，比较幸运没有遇到选项变灰不能修改的情况</p>
 <p><img src="https://kiritox.me/usr/uploads/2016/11/494868019.png" alt="ty8.png"></p>
 <p><img src="https://kiritox.me/usr/uploads/2016/11/1220477479.png" alt="ty9.png"></p>
-<p>再看看其他页面，一般路由器的功能基本都齐了，不过不知DDNS要怎么设置，遂放弃。管理界面不是特别好用，所以还是让二级路由器拨号和管理比较好。</p>
+<p>再看看其他页面，一般路由器的功能基本都齐了，不过不知 DDNS 要怎么设置，遂放弃。管理界面不是特别好用，所以还是让二级路由器拨号和管理比较好。</p>
 <h2 id="家庭网络环境的优化"><a href="#家庭网络环境的优化" class="headerlink" title="家庭网络环境的优化"></a>家庭网络环境的优化</h2><p>升级了光纤网络，自然也应当对网络环境<del>批判</del>优化一番，现在的家庭网络拓扑是这样的：</p>
 <p><img src="https://kiritox.me/usr/uploads/2016/11/946060881.png" alt="网络拓扑.png"></p>
-<p>客厅中一体机支持USB和无线连接，事实证明无线连接非常好用，这样一体机不需要考虑布线的问题了。</p>
-<p>因为老房屋一般都没有预埋网线，书房网络连接最开始是以无线方式连接到路由器的，但那时的无线路由器和无线网卡并不是特别好用（802.11g时代），后来改成拉一条网线在地面直接从客厅直连到书房的，但在出现多次有人因为网线被绊倒的情况后考虑到安全方面的原因改成了用<a href="http://www.tp-link.com.cn/product_336.html" target="_blank" rel="noopener">无线电力猫（路由器）</a> 充当网线，顺便解决了全屋无线覆盖率问题，本来电力猫的网线是接到书房电脑上的现在改成接到NAS，电脑无线方式连接电力猫。但是问题也很明显，现在虽然配置了NAS但整体网络环境并没有达到千兆速度。电力猫也是各种问题，首先本身只有百兆接口，通过电力线传输速度达不到100Mbps，而电力猫有时会也因为干扰或者其他问题出现无法上网的情况。目前NAS主要是用来储存照片和文件，如果要作为生产力用肯定要先升级网络环境。</p>
-<p>主路由使用NETGEAR WNDR3700v4，刷了openwrt当作翻墙网关,有兴趣的可以参考<a href="https://cokebar.info/archives/978" target="_blank" rel="noopener">教程</a>，不过现在最主要的作用是为PS4提供透明代理环境，保证联机质量，以及无污染DNS环境。但此方案实际上遇到了很麻烦的问题：主路由偶尔因为DNS解析出现问题导致全屋网络异常，表现为网页无法解析，主要原因是上游境外DNS服务器连接超时引起（公共DNS或shadowsocks服务器连接超时会出现此问题），常常需要人工维护。</p>
+<p>客厅中一体机支持 USB 和无线连接，事实证明无线连接非常好用，这样一体机不需要考虑布线的问题了。</p>
+<p>因为老房屋一般都没有预埋网线，书房网络连接最开始是以无线方式连接到路由器的，但那时的无线路由器和无线网卡并不是特别好用（802.11g 时代），后来改成拉一条网线在地面直接从客厅直连到书房的，但在出现多次有人因为网线被绊倒的情况后考虑到安全方面的原因改成了用<a href="http://www.tp-link.com.cn/product_336.html" target="_blank" rel="noopener">无线电力猫（路由器）</a> 充当网线，顺便解决了全屋无线覆盖率问题，本来电力猫的网线是接到书房电脑上的现在改成接到 NAS，电脑无线方式连接电力猫。但是问题也很明显，现在虽然配置了 NAS 但整体网络环境并没有达到千兆速度。电力猫也是各种问题，首先本身只有百兆接口，通过电力线传输速度达不到 100Mbps，而电力猫有时会也因为干扰或者其他问题出现无法上网的情况。目前 NAS 主要是用来储存照片和文件，如果要作为生产力用肯定要先升级网络环境。</p>
+<p>主路由使用 NETGEAR WNDR3700v4，刷了 openwrt 当作翻墙网关,有兴趣的可以参考<a href="https://cokebar.info/archives/978" target="_blank" rel="noopener">教程</a>，不过现在最主要的作用是为 PS4 提供透明代理环境，保证联机质量，以及无污染 DNS 环境。但此方案实际上遇到了很麻烦的问题：主路由偶尔因为 DNS 解析出现问题导致全屋网络异常，表现为网页无法解析，主要原因是上游境外 DNS 服务器连接超时引起（公共 DNS 或 shadowsocks 服务器连接超时会出现此问题），常常需要人工维护。</p>
 <p>按照现有环境和需要，改成以下网络拓扑：</p>
-<p><img src="https://kiritox.me/uploads/2016/11/867703132.png" alt="改良拓扑.png"></p>
-<p>主路由取消作为翻墙网关的作用，书房添加千兆交换机提供有线接口连接，再安装一个路由器负责透明代理，连接上去的所有设备均处于无墙环境，既满足翻墙需要，也避免了因为翻墙问题影响到主路由。偶然间发现一个GL-iNet迷你路由器很适合当翻墙网关，99元的价位比较合理，还可以很方便的随身携带到处愉快地翻墙(´ΘωΘ`)</p>
+<p><img src="https://kiritox.me/usr/uploads/2016/11/867703132.png" alt="改良拓扑.png"></p>
+<p>主路由取消作为翻墙网关的作用，书房添加千兆交换机提供有线接口连接，再安装一个路由器负责透明代理，连接上去的所有设备均处于无墙环境，既满足翻墙需要，也避免了因为翻墙问题影响到主路由。偶然间发现一个 GL-iNet 迷你路由器很适合当翻墙网关，99 元的价位比较合理，还可以很方便的随身携带到处愉快地翻墙(´ΘωΘ`)</p>
 <p><img src="https://kiritox.me/usr/uploads/2016/11/3622431413.jpg" alt="TB1PGnyJpXXXXbkXFXXXXXXXXXX_!!0-item_pic.jpg"></p>
 <h2 id="未来"><a href="#未来" class="headerlink" title="未来"></a>未来</h2><p>未来打算进一步优化网络，将电力猫线路重新换成网线，以钉墙方式安装网线，这样使主路由到书房网速可以达到千兆。电力猫保留安装以保证无线覆盖率。</p>
 <p><img src="https://kiritox.me/usr/uploads/2016/11/3364060589.png" alt="理想拓扑.png"></p>
@@ -727,7 +727,7 @@ Something wicked happened resolving &apos;packages.openmediavault.org:http&apos;
     <link href="https://kiritox.me/archives/learn-arduino-rather-than-mcu.html"/>
     <id>https://kiritox.me/archives/learn-arduino-rather-than-mcu.html</id>
     <published>2016-06-07T09:43:00.000Z</published>
-    <updated>2019-04-01T13:48:46.099Z</updated>
+    <updated>2019-08-31T16:57:10.871Z</updated>
     
     <content type="html"><![CDATA[<p>突然想起一个很重要的问题，为什么大家（包括我）都认为参加电子设计大赛，或者做点什么制作都非得要先学好单片机，还有模电数电这些基础知识？<br><em>本文针对还没有足够专业知识的同学，大神可忽略~</em></p>
 <a id="more"></a>
