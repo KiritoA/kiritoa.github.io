@@ -1,84 +1,789 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
-  
-    
-    <entry>
-      <title><![CDATA[Shutdown RabbitMQ consumer gracefully]]></title>
-      <url>%2Farchives%2Fshutdown-rabbitmq-consumer-gracefully.html</url>
-      <content type="text"><![CDATA[Recently, I need to implement graceful shutdown feature in a message queue consumer handling a large number of transactions in production that can’t be terminated immediately by a simple kill command. Implementation was tricky, though, it’s a great chance to solid my concurrent programming foundation. TheorySo, the basic idea is to utilize Unix (Unix-like, and POSIX-compliant) signal, a form of IPC (Inter-process communication). User can notify the consumer by the signal() system call from other processes or command kill [PID]. By default, kill command sends SIGTERM, the signal causing program termination, to the target. We just follow the convention. PHP has a PCNTL extension to manipulate signals. The thought of implementation is to preinstall a signal handler which set the global flag, then free resources and exit after the flag was detected by main loop. The difficulty here is that, system-level signals would interrupt normal execution of current process, which continues after the signal handler returns. The concurrent execution flow could result in issues such as synchronization and race condition. The buggy code might affect the system ferociously after a long uptime. A fairly straightforward and simple code is shown below: Version 11234567891011121314151617181920212223242526272829303132333435363738$running = true;$connection = new AMQPStreamConnection(...);$channel = $connection-&gt;channel();$callback = function ($message) &#123; pcntl_sigprocmask(SIG_BLOCK, [SIGTERM]); // Critical section entry // ... // Critical section exit pcntl_sigprocmask(SIG_UNBLOCK, [SIGTERM]); pcntl_signal_dispatch();&#125;;// Initialization code// ...$channel-&gt;basic_consume(..., $callback);$signalHandler = function ($signo) use (&amp;$running) &#123; $running = false; echo "Received SIGTERM signal\n";&#125;;// Install signal handlerpcntl_signal(SIGTERM, $signalHandler);while (count($channel-&gt;callbacks) &amp;&amp; $running) &#123; $channel-&gt;wait(); pcntl_signal_dispatch();&#125;// Restore signal handler to avoid unexpected interruptionpcntl_signal(SIGTERM, SIG_DFL);$channel-&gt;close();$connection-&gt;close(); The callback function calls pcntl_sigprocmask() to disable all interrupts, or just SIGTERM (depends on scenes) during the critical section, and re-enable interrupts after that. This procedure avoids the possibility that a kill signal breaks the transaction. Pending signal will not be processed until pcntl_signal_dispatch() is called. An alternate way is to use declare(ticks=1) to check signal periodically. However, when there is no message handling, the consumer is in idle state waiting for a new one. If we signal the program at this time. It’s quite a great chance to receive the follow warning: 1stream_select(): unable to select [4]: Interrupted system call (max_fd=7) The reason is that the $channel-&gt;wait() call will eventually invoke the select() Unix function which is interruptable by the SIGTERM. We can let the warning slipped past of course. However, for a robust application, it’s a good practice to treat all PHP warnings as an exception (as PHP frameworks did such as Laravel and Swoole) Assume that the warning throws an ErrorException if the stream_select was interrupted. Here is the remedy: Version 212345678910111213141516// ...while (count($channel-&gt;callbacks) &amp;&amp; $running) &#123; try &#123; $channel-&gt;wait(); &#125; catch (ErrorException $ex) &#123; if (!preg_match('~stream_select\\(\\)~i', $ex-&gt;getMessage())) &#123; throw $ex; &#125; &#125; pcntl_signal_dispatch();&#125;// ... As there is no specific exception type for the stream_select() interruption, an unfriendly way is to check the message using regular expression. Seems great! Now go get ready for launch. Ehh, Houston, we still have a problem. A race condition is introduced right after the while condition test and before the wait invocation. 12345while (count($channel-&gt;callbacks) &amp;&amp; $running) &#123; // Interruption here will be hanged until next loop $channel-&gt;wait(); // ... An Unix style solution is to use pselect() function: 123456789101112while (count($channel-&gt;callbacks)) &#123; pcntl_sigprocmask(SIG_BLOCK, [SIGTERM]); pcntl_signal_dispatch(); if (!$running) &#123; break; &#125; $channel-&gt;pselect_wait([SIGTERM]); // ... pselect() is equivalent to atomically executing the following calls: 123pthread_sigmask(SIG_SETMASK, &amp;sigmask, &amp;origmask);ready = select(nfds, &amp;readfds, &amp;writefds, &amp;exceptfds, timeout);pthread_sigmask(SIG_SETMASK, &amp;origmask, NULL); Unfortunately, there is no pselect() or pselect_wait() in PHP, this code is infeasible. We have no way to choose but implementing an inelegant mechanism by passing timeout parameter to the $channel-&gt;wait() method. Version 31234567891011121314151617181920212223242526272829303132333435363738394041424344454647$running = true;$connection = new AMQPStreamConnection(...);$channel = $connection-&gt;channel();$callback = function ($message) &#123; pcntl_sigprocmask(SIG_BLOCK, [SIGTERM]); // Critical section entry // ... // Critical section exit pcntl_sigprocmask(SIG_UNBLOCK, [SIGTERM]); pcntl_signal_dispatch();&#125;;// Initialization code// ...$channel-&gt;basic_consume(..., $callback);$signalHandler = function ($signo) use (&amp;$running) &#123; $running = false; echo "Received SIGTERM signal \n";&#125;;// Install signal handlerpcntl_signal(SIGTERM, $signalHandler);while (count($channel-&gt;callbacks) &amp;&amp; $running) &#123; try &#123; $channel-&gt;wait(null, false, 15); &#125; catch (ErrorException $ex) &#123; if (!preg_match('~stream_select\\(\\)~i', $ex-&gt;getMessage())) &#123; throw $ex; &#125; &#125; catch (\PhpAmqpLib\Exception\AMQPTimeoutException $ex) &#123; // &#125; pcntl_signal_dispatch();&#125;// Restore signal handler to avoid unexpected interruptionpcntl_signal(SIGTERM, SIG_DFL);$channel-&gt;close();$connection-&gt;close(); The $channel-&gt;wait() will time out periodically and throw an AMQPTimeoutException. We just ignore it and continue our next loop if no termination signal issued. Of course, the exception might be raised by other reasons as it’s a general timeout exception. Further inspection has to be taken if necessary. Also, if the SIGTERM is called just before the $channel-&gt;wait(), there will be an unavoidable timeout seconds delay before normal exit. EpilogueWell, I implemented this feature based on several references, including one project using this mechanism. Still, I don’t think this is an elegant and perfect solution. If you have any better ideas, or there are potential problems persisting, feel free to leave comments below. References https://github.com/php-amqplib/php-amqplib/issues/165 https://linux.die.net/man/2/pselect https://en.wikipedia.org/wiki/Signal_(IPC)]]></content>
-    </entry>
+  <entry>
+    <title>进击的巨人第一季TV/BD差异比较（13话、21话）</title>
+    <url>/attack-on-titan-tv-bd-comparison/</url>
+    <content><![CDATA[<p>其实在搭好博客初期就计划要写这篇TV/BD比较的，结果因为拖延症发作balabala之类的原因一直没动过笔，然而现在第二季都说要来了才想起这篇东西还没写。。。</p>
+<p>咳咳，言归正传，首先是强烈建议在观看进击的巨人第二季前重温一次第一季<strong>BD版</strong>，在重新熟悉剧情的同时说不定能发现新惊喜，尤其是13话。当初想写这篇文章的原因是BD版本就如之前网友所说的对画面作出了很多修正，使得BD版本与TV版本产生了不小的差异，可以说经到了让人惊讶的地步。</p>
+<span id="more"></span>
 
-    
-    <entry>
-      <title><![CDATA[为 Laravel 启用 Bootstrap 4]]></title>
-      <url>%2Farchives%2Fenable-bootstrap-for-laravel.html</url>
-      <content type="text"><![CDATA[尽管 Laravel 已经推出到 5.5 版本，但其默认的 Bootstrap 组件仍然是 3 的版本，而 Bootstrap 4 已经 Beta 很长一段时间，或许因为不是正式版 Laravel 并没有集成新版本，但我们完全可以手动把版本更换成 4.0。 以下内容对应 Laravel 5.5 版本 首先需要卸载默认的 Bootstrap 组件，在工程根目录下执行npm uninstall --save-dev bootstrap-sass然后安装新的 Bootstrapnpm install --save-dev bootstrap@^4.0.0-beta.3 popper.js截止目前 Bootstrap 最新版本是v4.0.0-beta.3，最新版本留意官网，注意新版本的需要popper.js执行一些如下拉菜单弹出的操作，务必安装此模块。 打开resources/assets/js/bootstrap.js，把 try { window.$ = window.jQuery = require(&apos;jquery&apos;); require(&apos;bootstrap-sass&apos;); } catch (e) {} 替换成 try { window.$ = window.jQuery = require(&apos;jquery&apos;); window.Popper = require(&apos;popper.js&apos;).default; require(&apos;bootstrap&apos;); } catch (e) {} 此步骤将旧的 Bootstrap 引用变更为新版本的路径。 打开resources/assets/sass/app.scss，将@import &quot;~bootstrap-sass/assets/stylesheets/bootstrap&quot;;更改为@import &quot;~bootstrap/scss/bootstrap.scss&quot;; 打开resources/assets/sass/_variables.scss，将$font-size-base: 14px;一行注释或删除 这样 Bootstrap 4 For Laravel 就配置完毕了]]></content>
-    </entry>
 
-    
-    <entry>
-      <title><![CDATA[进击的巨人第一季TV/BD差异比较（13话、21话）]]></title>
-      <url>%2Farchives%2Fattack-on-titan-tv-bd-comparison.html</url>
-      <content type="text"><![CDATA[其实在搭好博客初期就计划要写这篇TV/BD比较的，结果因为拖延症发作balabala之类的原因一直没动过笔，然而现在第二季都说要来了才想起这篇东西还没写。。。 咳咳，言归正传，首先是强烈建议在观看进击的巨人第二季前重温一次第一季BD版，在重新熟悉剧情的同时说不定能发现新惊喜，尤其是13话。当初想写这篇文章的原因是BD版本就如之前网友所说的对画面作出了很多修正，使得BD版本与TV版本产生了不小的差异，可以说经到了让人惊讶的地步。 应该有不少人知道，进击的巨人动画一直都存在制作问题，从一开始的第4话，第5话就出现了制作事故：福冈地区与其他地区的播放版本有明显的差异，不少画面镜头缺失（缺卡）要用静止画面和拉长其他片段来弥补。而之后的13话也是被网友吐槽问题多多。实际上，13话TV放送时同样因为制作进度赶不上出现了静帧和片段拉长的情况，不过因为这次TV播出版本所有地区统一，所以除了BD外任何版本都是看不出差异的（可能是吸取了福冈事件的教训），看过BD版就知道这次明显也属于制作事故，TV播出版本只是个半成品，BD版本修正了TV版本各种制作问题。而后期的21话也有类似情况出现，虽然没有13话的明显，但这凸显出了进击的巨人动画制作问题一直困扰着WIT STUDIO。 下面的对比画面均附有具体时间轴方便定位，左边画面为TV版，右边画面为BD版。 第13话画面对比在看接下来的画面比较前可以先看之前有人在贴吧发过的帖子，详细分析过13话的制作问题。 13话可谓是第一季最精彩最燃的一集，剧情是艾伦巨人化后成功搬起石头堵住城门缺口。可惜因为制作进度问题在一定程度上影响了观赏体验，画面缺失也间接影响了对剧情的理解，不难理解为何13话之后要放一个总集篇了（进度赶不及要时间喘一下气），现在BD版发售后终于可以做一个比较，看看当年的TV制作出现了哪些问题。 首先是众人在屋顶观察巨人镜头缺失，复制了别处的画面补上。 画面色调的变化，此处应该是后期进行过调色。 让被巨人绊倒的镜头，TV直接一个远景完事，缺了这个镜头直接影响剧情理解，TV后面直接是让已经倒地的画面。 此处细节：机动装置喷气缓冲了一下。 接着，可怜的让刚成功飞起来又正面撞正巨人，此处TV巨人特写画面被拖长弥补画面缺失。 阿尼踩巨人救让的镜头完全没了！！！ 这个画面看TV版只能听到撞击地面的声音完全不知发生了什么情况，TV的替换画面非常巧妙。 此处一个跳起动作颜色未补全。 接下来还是缺画面，某小队（忘记是什么小队了）从屋顶跳下引诱巨人，TV变成静帧。 引诱巨人的镜头替换成了艾伦的画面。 艾伦搬石头远镜头，被替换成相似画面，这个不看BD还真察觉不出。。。 这个是最明显的未上色画面，应该很多人都看出来了。 这个不知属于后期修改还是来不及制作的结果，BD可以看出很多诸如此类的细节变化。 TV画面片段被拉长，弥补三笠阿尔敏这个镜头特写的缺失，保护身后的巨人化艾伦。其实这里和之后两人一直都在地面冒着危险开路掩护艾伦到城门口，TV版的画面缺失导致这点根本没表现出来。 某人在巨人口下惨死的镜头片段被拉长，缺失掉头的画面（BD反而显得血腥，我就不指出来了。。。） 这里两个画面中间的两个人是阿尔敏和三笠，身后的巨人是艾伦。 阿尔敏说了一句“还有巨人”，TV版缺了有巨人在阿尔敏、三笠和艾伦面前的镜头。 还有阿尔敏和三笠冲上前的镜头。 TV居然用屋顶镜头充数了。 三笠跳起。 躲开了巨人的手。 砍杀巨人画面背景从天空变成地面，这样应该更合理一些。 此处TV的画面实际上是前面艾伦刚放下石头堵住城门缺口的那段画面，BD的是放下后开始有巨人向艾伦聚集的画面，TV没表现出来。 TV缺失镜头。 砍掉艾伦与巨人身体连接的时候两人因为惯性向后倒的镜头，TV直接白屏。 镜头缺失，TV用静帧替代。 兵长出场画面，背景有所变化。 画面细节变化。 此处开始到兵长出现在众人眼前片段TV版被各种白屏，拉长，以弥补缺失的画面，这个地方TV很明显能看出问题。 兵长：“这是个什么情况”，这里缺了一段艾伦的巨人身体的特写镜头，这个才是兵长的疑惑。 画面的变化，未考据TV版是否为其他地方复制过来的片段。 接下来也是连续一段的画面缺失。首先是装满尸体的车经过。 地面一排遗体。 巨人的唾液。 颜色的变化。 此处BD版的火变成了动态画面，不是TV版的一张静帧。 第21话画面对比21话剧情是艾伦在目睹利维班精英被杀后爆发巨人化与女巨人对打，也是比较精彩的一集，不过同样出现了一些画面缺失的问题，只是没有13话明显。 画面缺失。 细节缺失：阿尼在后面跟踪。 画面的变化。 这个看TV画面背景应该对应骑马时的那段画面，BD改成立体机动装置飞行的背景。 细节的加强。 BD版女巨人瞪眼镜头更吓人。 画面变成远处镜头。 细节变化。 这些镜头应该是全部都重做了，实在是良心。 细节明显加强不少，TV的像是画崩了。 重做镜头。 这两个不知算不算是缺失镜头。 TV缺失镜头：女巨人想杀在树上的三笠，三笠躲开了。 此处TV是静态画面，BD是动态画面。 以上大概就是我能看出来的这两话TV/BD版本的区别了，特意挑这两话是因为我第一次看这两话BD版本就发现出了其中的差异。当然我相信其他话肯定也有很多诸如此类的修正，我就不一一挖掘了，考据党可以继续深入探究，或者做个吃瓜群众好好再看一次BD版第一季吧。 同时也希望进击的巨人第二季不会再出现太多的制作问题了，还是说出导演未剪辑修正BD版也是一个卖点？（滑稽）]]></content>
-    </entry>
+<p>应该有不少人知道，进击的巨人动画一直都存在制作问题，从一开始的第4话，第5话就出现了制作事故：福冈地区与其他地区的播放版本有明显的差异，不少画面镜头缺失（缺卡）要用静止画面和拉长其他片段来弥补。而之后的13话也是被网友吐槽问题多多。实际上，13话TV放送时同样因为制作进度赶不上出现了静帧和片段拉长的情况，不过因为这次TV播出版本所有地区统一，所以除了BD外任何版本都是看不出差异的（可能是吸取了福冈事件的教训），看过BD版就知道这次明显也属于制作事故，TV播出版本只是个<strong>半成品</strong>，BD版本修正了TV版本各种制作问题。而后期的21话也有类似情况出现，虽然没有13话的明显，但这凸显出了进击的巨人动画制作问题一直困扰着WIT STUDIO。</p>
+<p><img src="/attack-on-titan-tv-bd-comparison/264222538.jpg" alt="654681f8eefdc13ad8dee196ff2a74f71366329524_full.jpg"></p>
+<p>下面的对比画面均附有具体时间轴方便定位，左边画面为TV版，右边画面为BD版。</p>
+<h2 id="第13话画面对比"><a href="#第13话画面对比" class="headerlink" title="第13话画面对比"></a>第13话画面对比</h2><p>在看接下来的画面比较前可以先看之前有人在贴吧发过的帖子，详细分析过13话的<a href="https://tieba.baidu.com/p/2426550687">制作问题</a>。</p>
+<p>13话可谓是第一季最精彩最燃的一集，剧情是艾伦巨人化后成功搬起石头堵住城门缺口。可惜因为制作进度问题在一定程度上影响了观赏体验，画面缺失也间接影响了对剧情的理解，不难理解为何13话之后要放一个总集篇了（进度赶不及要时间喘一下气），现在BD版发售后终于可以做一个比较，看看当年的TV制作出现了哪些问题。</p>
+<p>首先是众人在屋顶观察巨人镜头缺失，复制了别处的画面补上。<br><img src="/attack-on-titan-tv-bd-comparison/2732538910.jpg" alt="13.Still001.jpg"></p>
+<p>画面色调的变化，此处应该是后期进行过调色。<br><img src="/attack-on-titan-tv-bd-comparison/611428520.jpg" alt="13.Still002.jpg"></p>
+<p>让被巨人绊倒的镜头，TV直接一个远景完事，缺了这个镜头直接影响剧情理解，TV后面直接是让已经倒地的画面。<br><img src="/attack-on-titan-tv-bd-comparison/4060429132.jpg" alt="13.Still003.jpg"></p>
+<p>此处细节：机动装置喷气缓冲了一下。<br><img src="/attack-on-titan-tv-bd-comparison/661019329.jpg" alt="13.Still005.jpg"></p>
+<p><img src="/attack-on-titan-tv-bd-comparison/1713250458.jpg" alt="13.Still006.jpg"></p>
+<p>接着，可怜的让刚成功飞起来又正面撞正巨人，此处TV巨人特写画面被拖长弥补画面缺失。</p>
+<p><img src="/attack-on-titan-tv-bd-comparison/165200894.jpg" alt="13.Still007.jpg"></p>
+<p><img src="/attack-on-titan-tv-bd-comparison/2346376027.jpg" alt="13.Still008.jpg"></p>
+<p><img src="/attack-on-titan-tv-bd-comparison/1252941684.jpg" alt="13.Still009.jpg"></p>
+<p>阿尼踩巨人救让的镜头完全没了！！！<br><img src="/attack-on-titan-tv-bd-comparison/1372259669.jpg" alt="13.Still010.jpg"></p>
+<p>这个画面看TV版只能听到撞击地面的声音完全不知发生了什么情况，TV的替换画面非常巧妙。<br><img src="/attack-on-titan-tv-bd-comparison/1552232523.jpg" alt="13.Still011.jpg"></p>
+<p>此处一个跳起动作颜色未补全。<br><img src="/attack-on-titan-tv-bd-comparison/391907103.jpg" alt="13.Still054.jpg"></p>
+<p>接下来还是缺画面，某小队（忘记是什么小队了）从屋顶跳下引诱巨人，TV变成静帧。<br><img src="/attack-on-titan-tv-bd-comparison/3279117980.jpg" alt="13.Still012.jpg"></p>
+<p><img src="/attack-on-titan-tv-bd-comparison/7314165.jpg" alt="13.Still013.jpg"></p>
+<p>引诱巨人的镜头替换成了艾伦的画面。<br><img src="/attack-on-titan-tv-bd-comparison/1140120774.jpg" alt="13.Still014.jpg"></p>
+<p><img src="/attack-on-titan-tv-bd-comparison/1710281124.jpg" alt="13.Still015.jpg"></p>
+<p>艾伦搬石头远镜头，被替换成相似画面，这个不看BD还真察觉不出。。。<br><img src="/attack-on-titan-tv-bd-comparison/2707627942.jpg" alt="13.Still016.jpg"></p>
+<p><img src="/attack-on-titan-tv-bd-comparison/1834761918.jpg" alt="13.Still017.jpg"></p>
+<p>这个是最明显的未上色画面，应该很多人都看出来了。<br><img src="/attack-on-titan-tv-bd-comparison/2518108589.jpg" alt="13.Still018.jpg"></p>
+<p>这个不知属于后期修改还是来不及制作的结果，BD可以看出很多诸如此类的细节变化。<br><img src="/attack-on-titan-tv-bd-comparison/3050765522.jpg" alt="13.Still019.jpg"></p>
+<p>TV画面片段被拉长，弥补三笠阿尔敏这个镜头特写的缺失，保护身后的巨人化艾伦。<br>其实这里和之后两人一直都在地面冒着危险开路掩护艾伦到城门口，TV版的画面缺失导致这点根本没表现出来。<br><img src="/attack-on-titan-tv-bd-comparison/937896759.jpg" alt="13.Still020.jpg"></p>
+<p>某人在巨人口下惨死的镜头片段被拉长，缺失掉头的画面（BD反而显得血腥，我就不指出来了。。。）<br><img src="/attack-on-titan-tv-bd-comparison/3489831154.jpg" alt="13.Still022.jpg"></p>
+<p>这里两个画面中间的两个人是阿尔敏和三笠，身后的巨人是艾伦。<br><img src="/attack-on-titan-tv-bd-comparison/1482473614.jpg" alt="13.Still023.jpg"></p>
+<p><img src="/attack-on-titan-tv-bd-comparison/1026040550.jpg" alt="13.Still021.jpg"></p>
+<p>阿尔敏说了一句“还有巨人”，TV版缺了有巨人在阿尔敏、三笠和艾伦面前的镜头。<br><img src="/attack-on-titan-tv-bd-comparison/3863696473.jpg" alt="13.Still024.jpg"></p>
+<p><img src="/attack-on-titan-tv-bd-comparison/2268608881.jpg" alt="13.Still025.jpg"></p>
+<p>还有阿尔敏和三笠冲上前的镜头。<br><img src="/attack-on-titan-tv-bd-comparison/1073005831.jpg" alt="13.Still026.jpg"></p>
+<p>TV居然用屋顶镜头充数了。<br><img src="/attack-on-titan-tv-bd-comparison/1755784404.jpg" alt="13.Still027.jpg"></p>
+<p>三笠跳起。<br><img src="/attack-on-titan-tv-bd-comparison/1542207809.jpg" alt="13.Still028.jpg"></p>
+<p>躲开了巨人的手。<br><img src="/attack-on-titan-tv-bd-comparison/1107336420.jpg" alt="13.Still029.jpg"></p>
+<p>砍杀巨人画面背景从天空变成地面，这样应该更合理一些。<br><img src="/attack-on-titan-tv-bd-comparison/3739996922.jpg" alt="13.Still030.jpg"></p>
+<p>此处TV的画面实际上是前面艾伦刚放下石头堵住城门缺口的那段画面，BD的是放下后开始有巨人向艾伦聚集的画面，TV没表现出来。<br><img src="/attack-on-titan-tv-bd-comparison/2479107038.jpg" alt="13.Still031.jpg"></p>
+<p>TV缺失镜头。<br><img src="/attack-on-titan-tv-bd-comparison/478333789.jpg" alt="13.Still032.jpg"></p>
+<p><img src="/attack-on-titan-tv-bd-comparison/3618491068.jpg" alt="13.Still033.jpg"></p>
+<p>砍掉艾伦与巨人身体连接的时候两人因为惯性向后倒的镜头，TV直接白屏。<br><img src="/attack-on-titan-tv-bd-comparison/2908432086.jpg" alt="13.Still034.jpg"></p>
+<p>镜头缺失，TV用静帧替代。<br><img src="/attack-on-titan-tv-bd-comparison/590349314.jpg" alt="13.Still035.jpg"></p>
+<p><img src="/attack-on-titan-tv-bd-comparison/1710086445.jpg" alt="13.Still036.jpg"></p>
+<p>兵长出场画面，背景有所变化。<br><img src="/attack-on-titan-tv-bd-comparison/1021468819.jpg" alt="13.Still037.jpg"></p>
+<p>画面细节变化。<br><img src="/attack-on-titan-tv-bd-comparison/3231010297.jpg" alt="13.Still038.jpg"></p>
+<p>此处开始到兵长出现在众人眼前片段TV版被各种白屏，拉长，以弥补缺失的画面，这个地方TV很明显能看出问题。<br><img src="/attack-on-titan-tv-bd-comparison/1848298288.jpg" alt="13.Still040.jpg"></p>
+<p><img src="/attack-on-titan-tv-bd-comparison/2647940914.jpg" alt="13.Still041.jpg"></p>
+<p><img src="/attack-on-titan-tv-bd-comparison/1267744449.jpg" alt="13.Still042.jpg"></p>
+<p><img src="/attack-on-titan-tv-bd-comparison/3760263450.jpg" alt="13.Still043.jpg"></p>
+<p>兵长：“这是个什么情况”，这里缺了一段艾伦的巨人身体的特写镜头，这个才是兵长的疑惑。</p>
+<p><img src="/attack-on-titan-tv-bd-comparison/2645124447.jpg" alt="13.Still044.jpg"></p>
+<p><img src="/attack-on-titan-tv-bd-comparison/493850482.jpg" alt="13.Still045.jpg"></p>
+<p>画面的变化，未考据TV版是否为其他地方复制过来的片段。</p>
+<p><img src="/attack-on-titan-tv-bd-comparison/2169853739.jpg" alt="13.Still046.jpg"></p>
+<p><img src="/attack-on-titan-tv-bd-comparison/2422618554.jpg" alt="13.Still047.jpg"></p>
+<p>接下来也是连续一段的画面缺失。<br>首先是装满尸体的车经过。<br><img src="/attack-on-titan-tv-bd-comparison/1768277820.jpg" alt="13.Still048.jpg"></p>
+<p>地面一排遗体。<br><img src="/attack-on-titan-tv-bd-comparison/390951779.jpg" alt="13.Still049.jpg"></p>
+<p>巨人的唾液。<br><img src="/attack-on-titan-tv-bd-comparison/2715091382.jpg" alt="13.Still050.jpg"></p>
+<p><img src="/attack-on-titan-tv-bd-comparison/1045253158.jpg" alt="13.Still051.jpg"></p>
+<p>颜色的变化。<br><img src="/attack-on-titan-tv-bd-comparison/2376662324.jpg" alt="13.Still052.jpg"></p>
+<p>此处BD版的火变成了动态画面，不是TV版的一张静帧。<br><img src="/attack-on-titan-tv-bd-comparison/2503772001.jpg" alt="13.Still053.jpg"></p>
+<h2 id="第21话画面对比"><a href="#第21话画面对比" class="headerlink" title="第21话画面对比"></a>第21话画面对比</h2><p>21话剧情是艾伦在目睹利维班精英被杀后爆发巨人化与女巨人对打，也是比较精彩的一集，不过同样出现了一些画面缺失的问题，只是没有13话明显。</p>
+<p>画面缺失。<br><img src="/attack-on-titan-tv-bd-comparison/4237538832.jpg" alt="21.Still001.jpg"></p>
+<p>细节缺失：阿尼在后面跟踪。<br><img src="/attack-on-titan-tv-bd-comparison/4180186486.jpg" alt="21.Still003.jpg"></p>
+<p>画面的变化。<br><img src="/attack-on-titan-tv-bd-comparison/2789436168.jpg" alt="21.Still004.jpg"></p>
+<p><img src="/attack-on-titan-tv-bd-comparison/3911655772.jpg" alt="21.Still005.jpg"></p>
+<p><img src="/attack-on-titan-tv-bd-comparison/3268538861.jpg" alt="21.Still006.jpg"></p>
+<p><img src="/attack-on-titan-tv-bd-comparison/4021055995.jpg" alt="21.Still007.jpg"></p>
+<p><img src="/attack-on-titan-tv-bd-comparison/2757000422.jpg" alt="21.Still008.jpg"></p>
+<p><img src="/attack-on-titan-tv-bd-comparison/1454966165.jpg" alt="21.Still009.jpg"></p>
+<p><img src="/attack-on-titan-tv-bd-comparison/2099436511.jpg" alt="21.Still010.jpg"></p>
+<p><img src="/attack-on-titan-tv-bd-comparison/1516278754.jpg" alt="21.Still011.jpg"></p>
+<p><img src="/attack-on-titan-tv-bd-comparison/1145813076.jpg" alt="21.Still012.jpg"></p>
+<p><img src="/attack-on-titan-tv-bd-comparison/2543240628.jpg" alt="21.Still013.jpg"></p>
+<p>这个看TV画面背景应该对应骑马时的那段画面，BD改成立体机动装置飞行的背景。<br><img src="/attack-on-titan-tv-bd-comparison/4204567741.jpg" alt="21.Still014.jpg"></p>
+<p><img src="/attack-on-titan-tv-bd-comparison/1901378247.jpg" alt="21.Still015.jpg"></p>
+<p><img src="/attack-on-titan-tv-bd-comparison/1319067479.jpg" alt="21.Still016.jpg"></p>
+<p>细节的加强。<br><img src="/attack-on-titan-tv-bd-comparison/2352002044.jpg" alt="21.Still017.jpg"></p>
+<p><img src="/attack-on-titan-tv-bd-comparison/4106090652.jpg" alt="21.00_10_59_02.Still035.jpg"></p>
+<p>BD版女巨人瞪眼镜头更吓人。<br><img src="/attack-on-titan-tv-bd-comparison/146830635.jpg" alt="21.Still019.jpg"></p>
+<p>画面变成远处镜头。<br><img src="/attack-on-titan-tv-bd-comparison/394615132.jpg" alt="21.Still020.jpg"></p>
+<p>细节变化。<br><img src="/attack-on-titan-tv-bd-comparison/1447678205.jpg" alt="21.Still021.jpg"></p>
+<p><img src="/attack-on-titan-tv-bd-comparison/3606971947.jpg" alt="21.Still022.jpg"></p>
+<p>这些镜头应该是全部都重做了，实在是良心。<br><img src="/attack-on-titan-tv-bd-comparison/801767984.jpg" alt="21.Still023.jpg"></p>
+<p><img src="/attack-on-titan-tv-bd-comparison/4252548986.jpg" alt="21.Still024.jpg"></p>
+<p><img src="/attack-on-titan-tv-bd-comparison/933659136.jpg" alt="21.Still025.jpg"></p>
+<p>细节明显加强不少，TV的像是画崩了。<br><img src="/attack-on-titan-tv-bd-comparison/3099751525.jpg" alt="21.Still026.jpg"></p>
+<p><img src="/attack-on-titan-tv-bd-comparison/2444074638.jpg" alt="21.Still027.jpg"></p>
+<p><img src="/attack-on-titan-tv-bd-comparison/3224917433.jpg" alt="21.Still028.jpg"></p>
+<p>重做镜头。<br><img src="/attack-on-titan-tv-bd-comparison/1135456221.jpg" alt="21.Still029.jpg"></p>
+<p>这两个不知算不算是缺失镜头。<br><img src="/attack-on-titan-tv-bd-comparison/3572321977.jpg" alt="21.Still030.jpg"></p>
+<p><img src="/attack-on-titan-tv-bd-comparison/2927549013.jpg" alt="21.Still031.jpg"></p>
+<p>TV缺失镜头：女巨人想杀在树上的三笠，三笠躲开了。<br><img src="/attack-on-titan-tv-bd-comparison/1753734474.jpg" alt="21.Still032.jpg"></p>
+<p><img src="/attack-on-titan-tv-bd-comparison/4147046050.jpg" alt="21.Still033.jpg"></p>
+<p>此处TV是静态画面，BD是动态画面。<br><img src="/attack-on-titan-tv-bd-comparison/3611886019.jpg" alt="21.Still034-TV为静帧画面.jpg"></p>
+<hr>
+<p>以上大概就是我能看出来的这两话TV/BD版本的区别了，特意挑这两话是因为我第一次看这两话BD版本就发现出了其中的差异。当然我相信其他话肯定也有很多诸如此类的修正，我就不一一挖掘了，考据党可以继续深入探究，或者做个吃瓜群众好好再看一次BD版第一季吧。</p>
+<p>同时也希望进击的巨人第二季不会再出现太多的制作问题了，还是说出导演未剪辑修正BD版也是一个卖点？（滑稽）</p>
+]]></content>
+      <categories>
+        <category>Anime</category>
+      </categories>
+      <tags>
+        <tag>进击的巨人</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>为 Laravel 启用 Bootstrap 4</title>
+    <url>/enable-bootstrap-for-laravel/</url>
+    <content><![CDATA[<p>尽管 Laravel 已经推出到 5.5 版本，但其默认的 Bootstrap 组件仍然是 3 的版本，而 Bootstrap 4 已经 Beta 很长一段时间，或许因为不是正式版 Laravel 并没有集成新版本，但我们完全可以手动把版本更换成 4.0。</p>
+<p>以下内容对应 Laravel 5.5 版本</p>
+<span id="more"></span>
 
-    
-    <entry>
-      <title><![CDATA[为Windows apps应用设置本地代理]]></title>
-      <url>%2Farchives%2Fsetup-proxy-for-windows-apps.html</url>
-      <content type="text"><![CDATA[由于众所周知的原因，Wikipedia，Twitter，Facebook这些网站需要设置代理才可以正常访问。正常情况下，电脑安装了代理工具在浏览器或者普通程序中访问是没有问题的，但在Windows 8/8.1/10的商店程序（Windows apps）即使设置了代理也会出现无法连接的情况。 原因分析经过研究，原因跟Windows apps的运行机制有关系。默认情况下，所有Windows apps均运行在被称为”AppContainers”的独立进程上，默认情况下AppContainers会阻止网络流量发送到本地，因此Windows apps无法连接到本地代理服务器。而这个问题同样也影响了一些开发者使用Fiddler抓包工具本地分析和调试程序。 在这篇博客中作者介绍了使用新版Fiddler的工具或者下载独立的 EnableLoopback Utility 为特定程序设置启用Loopback通信功能（Exempt，豁免），我们也可以通过这个办法使被墙的apps连接本地代理服务器使代理生效。 具体步骤感谢 Daniel 的提醒，Fiddler移动了程序的下载位置，已更新下载链接。下载EnableLoopback Utility工具并安装。 如果想看到更详细的信息或者设置可以使用Windows Loopback Exemption Manager，操作方法大同小异。使用Windows Loopback Exemption Manager可以看到Edge浏览器默认开启了这个功能，所以Edge才可以正常使用代理或者访问本地主机。 安装好EnableLoopback Utility后程序自动打开，或者在开始菜单找到”Enable AppContainer Loopback”打开，根据需要点击要开启Loopback的程序，或者直接点”Exempt All”设置所有程序开启，最后点Save Changes即可，之后可以点 Refresh 刷新查看当前设置或者关闭程序。 此时再打开Wikipedia，已经可以正常访问。 该方法适用于大部分Windows apps程序，邮件程序亦可以正常连接Gmail邮箱，但仍然有部分应用不支持，如Facebook即使开启了Loopback仍然会出现连接超时的问题。 参考https://blogs.msdn.microsoft.com/fiddler/2011/12/10/revisiting-fiddler-and-win8-immersive-applications/https://my.oschina.net/farces/blog/616110https://loopback.codeplex.com/]]></content>
-    </entry>
 
-    
-    <entry>
-      <title><![CDATA[WNDR3700v4刷回原厂固件]]></title>
-      <url>%2Farchives%2Fflash-wndr3700v4-to-stock-firmware.html</url>
-      <content type="text"><![CDATA[之前刷 Openwrt 的时候已经有人反映过说再也刷不回原厂固件，不过我是不太相信的，因为路由器本身有救砖模式。不过真正刷的时候还是折腾了好一阵子，但肯定是没问题的。这里结合网上的帖子和自己的研究分析了一下原因并列出解决步骤，本文适用于刷了 OpenWrt 或者 DD-WRT 的 NETGEAR WNDR3700v4 路由器，直接 TFTP 方式刷回原厂固件失败的情况。此方法也适用于 WNDR4300，自行查找对应的固件刷入即可。 原因分析本人之前使用的是openwrt 15.01版本，TFTP 刷回原厂固件表现为路由器 Power 指示灯一直是橙色，似乎还不断地自动重启，因此常规的救砖方式无效。先上结论，刷回原版固件出问题基本都是因为刷入第三方固件时破坏了路由器里面 Flash 的分区。 WNDR3700v4 里面的 Flash 也有空间是用来存放设置，uboot 等内容，各自存放在不同的分区，而 firmware 部分才是真正的存放 Openwrt 系统的地方，Openwrt 里面看到的可用空间也是这部分的内容。而刷入的 img 文件（平时说的固件）其实也包括了整个 Flash 的分区信息。 根据 Openwrt 官网 WNDR4300 Flash 布局的说明，WNDR3700v4/WNDR4300（两款型号硬件基本一致，也都使用 NAND Flash）原版固件的 Flash 布局（为方便理解统一称为分区）是这样的： Openwrt 官方固件是这样的 对比可以看出来 Openwrt 做到了和原版一致的 Flash 分区，因此正常情况下通过 TFTP 方式刷官方固件因为分区一致是不会有什么问题的。但是如果之前刷入过增加可用空间的改版 Openwrt 固件的话，原始的 Flash 分区就会被破坏。增加空间的代码是这样的： wndr4300_mtdlayout=mtdparts=ar934x-nfc:256k(u-boot)ro,256k(u-boot-env)ro,256k(caldata),512k(pot),2048k(language),512k(config),3072k(traffic_meter),2048k(kernel),23552k(ubi),25600k@0x6c0000(firmware),256k(caldata_backup),-(reserved) 改为（将ubi和firmware增加96M，完全使用128M flash） wndr4300_mtdlayout=mtdparts=ar934x-nfc:256k(u-boot)ro,256k(u-boot-env)ro,256k(caldata),512k(pot),2048k(language),512k(config),3072k(traffic_meter),2048k(kernel),121856k(ubi),123904k@0x6c0000(firmware),256k(caldata_backup),-(reserved) 可以看出改版固件增大了ubi和firmware的空间，的确使得 Openwrt 实际可用空间变大，但同时也破坏了原始 Flash 的空间分配（其实就是利用了后面的 reserved 空间，但这样 caldata_backup 位置也会后移，已经变得和官方固件不一致），直接刷回原版固件就很有可能出现问题。 而 DD-WRT 固件也同样会产生这个问题，其 Flash 分区如下： mtd0RedBoot512KiBmtd5board_config512KiBunused2.5MiBmtd4nvram512KiBunused3MiBmtd1 linux 124160KiB (121.25MiB)unused1152KiBmtd2rootfs21504KiBmtd3ddwrt101504KiB 其中 linux 分区在 Flash 上的地址对应的就是 Openwrt 和原版固件中 frimware，caldata_backup 和 reserved 的位置（0x0000006c0000-0x000008000000）。 在 TFTP 模式下似乎并不会自动对 flash 执行 erase 命令（相当于格式化），仅仅覆盖了原来的内容，所以第三方固件的残留内容很有可能影响了原版固件的运作，因此需要手动执行该命令。为了方便擦除可以先把路由器刷到 DD-WRT，然后对 linux 分区执行 erase 命令，把 frimware 以后的内容全部清空再刷回原版固件。 固件和环境准备 在控制面板“启用或关闭 windows 功能”启用“TFTP 客户端”组件。 在 DD-WRT 下载 WNDR3700v4 最新固件ftp://ftp.dd-wrt.com/betas/2014/02-04-2014-r23503/netgear-wndr3700v4/wndr3700v4-factory.img。 下载最新版固件，可选择中国/俄罗斯版(PRRU)固件或者国际版固件，PRRU 固件增加了 IPTV，IP-MAC，脱机下载等国际版没有的功能，而国际版则版本较新，修复改进的项目比较多，各位可以自行斟酌选哪个版本。 Firmware Version 1.0.2.80 (All Regions Except China &amp; Russia)http://www.downloads.netgear.com/files/GDC/WNDR3700V4/WNDR3700v4-V1.0.2.80.zip Firmware Version 1.0.1.60 (For China and Russia Only)http://www.downloads.netgear.com/files/GDC/WNDR3700V4/WNDR3700v4_PRRU_FW_V1.0.1.60.zip 参考帖子:http://www.right.com.cn/forum/thread-185263-1-1.htmlhttp://www.right.com.cn/forum/thread-154774-1-1.html 实现 路由器断电后按住 RESET 键开机，等待电源指示灯变成绿色闪烁状态时松开，用网线连接路由器，网卡 IP 设置成 192.198.1.2（只要是同网段不是 192.168.1.1 的 IP 都可以），子网掩码 255.255.255.0，网关设置 192.168.1.1. 打开命令行窗口，切换目录到 DD-WRT 固件文件所在的目录，执行 tftp -i 192.168.1.1 put wndr3700v4-factory.img，稍等一段时间，路由器自动重启，等待电源指示灯变成绿色常亮即启动完成，如果长时间显示橙色尝试断电后重新通电。 设置路由器，浏览器打开 192.168.1.1，第一次登陆要先设置登陆用户名和密码，不更改默认会自动生成密码。主界面中点选 Service 选项卡，在下找到 Secure Shell 一栏，将 SSHd 改成 Enabled，其他保持默认，按最底部的 Apply Settings。然后切换到 Administration 选项卡，下面的 Remote Access 一栏，将 SSH Management 改成 Enabled，其他保持默认，按最底部的 Apply Settings。 使用 SSH 工具登入，Windows 平台个人推荐MobaXterm，SSH 登陆用户名为 root，密码是之前设置的登陆密码，成功登陆后执行以下命令： 12mtd erase linuxreboot 路由器自动重启，此时因为固件已被刷除自动进入 TFTP 模式，等待电源指示灯变成绿色闪烁，切换目录到原厂固件文件所在的目录，在命令行窗口根据下载的版本输入tftp -i 192.168.1.1 put WNDR3700v4-V1.0.1.60PRRU.img 或 tftp -i 192.168.1.1 put WNDR3700v4-V1.0.2.80.img稍等一段时间，路由器自动重启，如果启动失败尝试重新通电。 把网卡改回自动获取 IP 地址，至此完成刷机步骤。]]></content>
-    </entry>
+<p>首先需要卸载默认的 Bootstrap 组件，在工程根目录下执行<br><code>npm uninstall --save-dev bootstrap-sass</code><br>然后安装新的 Bootstrap<br><code>npm install --save-dev bootstrap@^4.0.0-beta.3 popper.js</code><br>截止目前 Bootstrap 最新版本是<code>v4.0.0-beta.3</code>，最新版本留意官网，注意新版本的需要<code>popper.js</code>执行一些如下拉菜单弹出的操作，务必安装此模块。</p>
+<p>打开<code>resources/assets/js/bootstrap.js</code>，把</p>
+<pre><code>try &#123;
+    window.$ = window.jQuery = require(&#39;jquery&#39;);
 
+    require(&#39;bootstrap-sass&#39;);
+&#125; catch (e) &#123;&#125;
+</code></pre>
+<p>替换成</p>
+<pre><code>try &#123;
+    window.$ = window.jQuery = require(&#39;jquery&#39;);
+    window.Popper = require(&#39;popper.js&#39;).default;
     
-    <entry>
-      <title><![CDATA[电信光纤升级笔记]]></title>
-      <url>%2Farchives%2Fhome-fiber-network-upgrade-log.html</url>
-      <content type="text"><![CDATA[电信的光纤升级改造计划已经搞了好几年，虽然一直都有想升级的想法，但是之前电信一直都说线路没有覆盖到不能升级，到了最近终于说是覆盖到小区了，不过去了电信营业厅问才知道升级也要收钱的( ˘･з･)没想到去完营业厅第二天电信（不是营业厅的人）就打电话来说现在要光进铜退，可以免费升光纤，我擦。。。。还好没同意升级不然白花钱了。 配置言归正传，经过安装师傅一番布线，配置好了光纤，电信送的光猫是这样的： 光猫背后有两个网络接口，推测（后来在超级管理员管理界面证实）千兆口用来上网，百兆口是电信 IPTV。另外电话就是普通的固话了，另外竟然还提供了个 USB 插口，未测试是不是可以插 U 盘做 NAS 之类的。 默认光猫是带自动拨号的，连上光猫的 wifi 或者千兆网线就可以不用拨号立即上网，也就是所谓的路由模式，光猫充当路由器，对于一般用户来说这个设定已经很好用了。 如果千兆口后面接二级路由器的话根据不同情况要分别设置：一种是千兆口接二级路由器的 WAN 口，此时路由器必须改成与光猫不同 IP 网段，不同品牌教程不一样，这里列一个TP-LINK 的参考，新的 TP-LINK 路由器似乎可以自动识别并自动更改设置无需人工修改。 一开始是打算就这样用路由模式也不错，但光猫只能更改很基本的设定，像 DMZ，端口转发，DDNS 这些功能通通不能设置，只能以超级管理员身份登入才能更改，但即使是这个管理界面反应慢，也不好设置，说白了就是光猫的固件烂。于是打算把光猫改成传说中的桥接模式，光猫仅仅起到桥接作用，让接在千兆口后面的路由器负责拨号和管理，这样就和以前用 ADSL 时的方式一样了。 不得不说这个 web 设置界面还是做的挺不错的，之前看过外国的一些营运商定制路由器也是类似这种界面，不过也是阉割各种高级功能就是了，而且还只能用营运商给的路由器拨号。 网络设置就三个页面能改，然而都并没有什么卵用，顺便一提局域网地址一栏并不能改网段，把 IP 改成 192.168.2.1 然后你会发现 DHCP 居然还是分 192.168.1.x 的地址，这神 bug。。 重头戏要来了，退出登录，重新输入传说中的超级管理员账号telecomadmin和密码nE7jA%5m 界面立马就不同了 就是在这个页面把模式的 Route 改成 Bridge，比较幸运没有遇到选项变灰不能修改的情况 再看看其他页面，一般路由器的功能基本都齐了，不过不知 DDNS 要怎么设置，遂放弃。管理界面不是特别好用，所以还是让二级路由器拨号和管理比较好。 家庭网络环境的优化升级了光纤网络，自然也应当对网络环境批判优化一番，现在的家庭网络拓扑是这样的： 客厅中一体机支持 USB 和无线连接，事实证明无线连接非常好用，这样一体机不需要考虑布线的问题了。 因为老房屋一般都没有预埋网线，书房网络连接最开始是以无线方式连接到路由器的，但那时的无线路由器和无线网卡并不是特别好用（802.11g 时代），后来改成拉一条网线在地面直接从客厅直连到书房的，但在出现多次有人因为网线被绊倒的情况后考虑到安全方面的原因改成了用无线电力猫（路由器） 充当网线，顺便解决了全屋无线覆盖率问题，本来电力猫的网线是接到书房电脑上的现在改成接到 NAS，电脑无线方式连接电力猫。但是问题也很明显，现在虽然配置了 NAS 但整体网络环境并没有达到千兆速度。电力猫也是各种问题，首先本身只有百兆接口，通过电力线传输速度达不到 100Mbps，而电力猫有时会也因为干扰或者其他问题出现无法上网的情况。目前 NAS 主要是用来储存照片和文件，如果要作为生产力用肯定要先升级网络环境。 主路由使用 NETGEAR WNDR3700v4，刷了 openwrt 当作翻墙网关,有兴趣的可以参考教程，不过现在最主要的作用是为 PS4 提供透明代理环境，保证联机质量，以及无污染 DNS 环境。但此方案实际上遇到了很麻烦的问题：主路由偶尔因为 DNS 解析出现问题导致全屋网络异常，表现为网页无法解析，主要原因是上游境外 DNS 服务器连接超时引起（公共 DNS 或 shadowsocks 服务器连接超时会出现此问题），常常需要人工维护。 按照现有环境和需要，改成以下网络拓扑： 主路由取消作为翻墙网关的作用，书房添加千兆交换机提供有线接口连接，再安装一个路由器负责透明代理，连接上去的所有设备均处于无墙环境，既满足翻墙需要，也避免了因为翻墙问题影响到主路由。偶然间发现一个 GL-iNet 迷你路由器很适合当翻墙网关，99 元的价位比较合理，还可以很方便的随身携带到处愉快地翻墙(´ΘωΘ`) 未来未来打算进一步优化网络，将电力猫线路重新换成网线，以钉墙方式安装网线，这样使主路由到书房网速可以达到千兆。电力猫保留安装以保证无线覆盖率。]]></content>
-    </entry>
+    require(&#39;bootstrap&#39;);
+&#125; catch (e) &#123;&#125;
+</code></pre>
+<p>此步骤将旧的 Bootstrap 引用变更为新版本的路径。</p>
+<p>打开<code>resources/assets/sass/app.scss</code>，将<br><code>@import &quot;~bootstrap-sass/assets/stylesheets/bootstrap&quot;;</code><br>更改为<br><code>@import &quot;~bootstrap/scss/bootstrap.scss&quot;;</code></p>
+<p>打开<code>resources/assets/sass/_variables.scss</code>，将<br><code>$font-size-base: 14px;</code><br>一行注释或删除</p>
+<p>这样 Bootstrap 4 For Laravel 就配置完毕了</p>
+]]></content>
+      <categories>
+        <category>Coding</category>
+      </categories>
+      <tags>
+        <tag>PHP</tag>
+        <tag>Laravel</tag>
+        <tag>Bootstrap</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>WNDR3700v4刷回原厂固件</title>
+    <url>/flash-wndr3700v4-to-stock-firmware/</url>
+    <content><![CDATA[<p>之前刷 Openwrt 的时候已经有人反映过说再也刷不回原厂固件，不过我是不太相信的，因为路由器本身有救砖模式。不过真正刷的时候还是折腾了好一阵子，但肯定是没问题的。这里结合网上的帖子和自己的研究分析了一下原因并列出解决步骤，本文适用于刷了 OpenWrt 或者 DD-WRT 的 NETGEAR WNDR3700v4 路由器，直接 TFTP 方式刷回原厂固件失败的情况。此方法也适用于 WNDR4300，自行查找对应的固件刷入即可。</p>
+<span id="more"></span>
 
-    
-    <entry>
-      <title><![CDATA[NAS打造日志--折腾篇]]></title>
-      <url>%2Farchives%2Fnas-build-log-practical.html</url>
-      <content type="text"><![CDATA[本来题目是想写实践篇的，但是折腾一圈下来发现这应该叫折腾篇才对，因为实在是太太太。。。折腾了 需求分析个人的要求比较简单，不需要很多人追捧的HTPC+NAS二合一，也不需要搞个什么E3 CPU，NAS就应当好好地当好它的本职工作，具体需求就是: File Server：基本的文件存取服务器，NAS核心功能，包括局域网访问和远程访问（云端服务器） DLNA Server：让设备端轻松看各种下载视频和音频 远程下载：远程控制下载，回到家就能看视频 硬盘盘位：4-6个 性能与功耗：要求必须低功耗（电费），性能不需要太高 体积：ITX或M-ATX均可，优先ITX 潜在需求： 软路由提供透明代理网络环境 硬件选型实际开始打造之前对硬件方案进行了一些研究，因为手头上有一些之前DIY剩下的零部件，包括机箱，电源，内存等等，因此本次实际打造只买了一块主板，总花费470元。 硬件配置： 主板+CPU：ASROCK J3160M – 470元 内存：2 x 威刚DDR3 1600 4G 机箱：酷冷至尊毁灭者经典U3升级版 电源：酷冷至尊战斧二代400W电源 硬盘：1x希捷1TB + 1x希捷250GB 曾被AMD坑过的我现在买新CPU都是首选Intel，因此根据Intel最新发布的Roadmap选择了 Intel Celeron J3160，J3160是Intel 16’Q1新发布的一款超低功耗SoC CPU，TDP仅为6W，支持VT-x、AES等，性能一般但已经可以满足基本NAS需求，做软路由也相当不错。考虑到要低功耗的原因没有选G1840, G4400这些型号，虽然总有人说功耗也高不了多少不要迷恋低功耗之类的，但是这两个CPU idle功率要高10W左右，有负载时就更高了。而J3160有负载时功耗也仅在15W-20W之间。更何况品牌NAS也都是有用J3160，J1900，N3150这些低功耗U。 个人认为CPU选择要根据实际出发不要盲目跟风，如果没有虚拟化、HTPC、实时转码、编码、渲染。。。之类的需求高性能的CPU也是浪费。 主板方面选择的是华擎的J3160M，M-ATX规格主板，2xSATA3接口，CPU被动散热无需风扇。选择它主要是因为手头上有多余的台式DDR3内存可以用上，而且也有不错的扩展性（3xPCI-E Slot），不过SATA接口略不足，需要加SATA扩展卡扩展。 而ITX版本华擎J3160-ITX提供4xSATA3，1xPCI-E Slot + 1x Mini-PCIE Slot，使用笔记本DDR3/DDR3L内存，如果对体积有需求直接考虑ITX板。如果想拓展SATA口可以买Mini-PCIE插槽的扩展卡，可额外提供2个SATA接口。 内存8G的确是有点过剩了，如果不上虚拟化的话迟些出掉一条或者装到另一台电脑上。 硬盘都是之前留下来的东西，虽然说希捷坏盘率高什么的，但两块硬盘用了这么多年都还健在，也没看到警告信息，可能是运行时间不长的原因吧(◔౪◔)（两硬盘在线时间均为3000小时左右）。不过迟些会上WD的红盘。 实际测试了一下功耗，总结如下： 测试条件 功率 无硬盘运行（运行PE系统测试） 15W 1T 单硬盘运行 25W 1T 单硬盘休眠 20W 1T+250G 双硬盘硬盘运行 35W 软件方案比较知名的免费NAS系统有：FreeNAS、NAS4Free、OpenMediaVault（详细介绍可以看这里）其他系统方案还有黑群晖和Windows Server。 FreeNAS、OpenMediaVault、NAS4Free关系：Olivier Cochard-Labbe在2005年创建了FreeNAS项目，后Volker Theile加入该项目作为核心开发人员；2009年12月Olivier Cochard-Labbe发表声明停止为FreeNAS 0.7版本开发新功能后，Volker Theile创建了基于Debian Linux的OpenMediaVault项目，并采用GPLv3授权；iXsystems收购FreeNAS后重写了网页框架和构架在2011年发布了全新的FreeNAS 8版本；2011年其余开发者基于FreeNAS 0.7开发了分支并重新命名为NAS4Free。引用:http://songming.me/openmediavault-setup.html FreeNAS、NAS4Free这两个系统是基于FreeBSD开发，使用ZFS分区，对内存需求比较高，官方强烈推荐使用ECC内存，而且至少需要8GB，虽然这两个系统相当不错，但本次计划没有ECC内存因此只能排除这两个方案。 OpenMediaVaultOpenMediaVault是基于Debian的NAS系统，简称OMV。由于是一个Linux-based的系统，可以支持Ext3, Ext4, XFS, JFS等Linux常见分区，除了OMV本身提供的插件也可以自行安装各种基于Linux应用，总的来说是十分强大的，近几年来也渐渐火起来。 黑群晖黑群晖是通过破解品牌NAS群晖的系统启动引导，制作出引导文件使普通电脑都可以安装群晖系统，实际使用上基本达到与群晖一致的体验，想说一下的是有人声称群晖使用的是加密分区格式，系统一旦损坏数据就拿不出来。实际上群晖使用就是Linux的EXT4分区，不存在加密一说，使用Linux-based系统就可以把里面的内容提取出来，官方也提供了相关教程。不过黑群晖肯定是非官方授权的也是没有售后支援的，所以使用上会有一定的风险，出现问题要自己解决。 Windows Server 2012 R2 / Windows 10Windows Server系统的话就不用多说了，功能强大而且配置flexible，有需要可以上Hyper-V虚拟化，不过500刀的价钱不是每个人都能承受的起。Windows 10同样支持虚拟化，对于不想折腾的人来说也是个不错的选择。（请支持正版） 折腾篇OpenMediaVault初体验OMV总的来说也算是一个不错的系统，对于熟悉Linux的人来说实在是太方便，但是官方给出了这么一个需求： System DriveThe whole disc will be occupied by the System and swap space, so size doesn’t matter so much. Data storage on the system disc is not supported.Spinning Harddisk, SSD, Disk-on-Module, CompactFlash or USB thumb drive type drives can be used as System Drive.If you use a Flash Drive, select one with static wear leveling, without it the drive will have a very short lifetime. It is also recommended to activate the Flash memory Plugin: (see Plug-ins) The entire disk is used as system disk. This disk can not be used to store user data.http://wiki.openmediavault.org/index.php?title=Prerequisites 大致的意思就是，如果你使用Flash储存设备做系统盘的话，要找那些静态损耗均衡（就是类似SSD Trim技术的意思）的设备，不然的话很快就会完蛋，所以一定要找长擦写寿命的。使用SSD是个比较好的选择，系统安装好后虽然会把整个硬盘占用了，但是可以自行分区腾出空间供作储存。但是手头上没有SSD硬盘空闲，电商逛了一圈现在一线大厂SSD 60G价格跟128/120G的都差不多价格，便宜的SSD又怕出问题。偶然看到有SLC U盘这么一样东西，据说寿命比普通U盘都要长，于是在淘宝找了个59包邮的SLC U盘，本来想着系统盘读写量又不是很大找个便宜点的U盘就算了（据说都是小作坊产品），而且这个是SLC储存理论上寿命也是可以的(Flag)。 安装完成后看到界面，看起来还是不错的，有一些插件需要安装第三方安装包，根据个人需求，安装DLNA插件和VirtualBox就差不多了。 然而当我重启到Ubuntu Live，打开GParted分区工具打算对1T硬盘重新分下区的时候，有个警告说U盘的分区信息读不出来，当时不怎么在意，分完区重启后。。。无法引导？？？ Round1：好吧。。可能是分区的时候损坏了（玄学？），只好重新分区重装OMV，配置好各种服务，Perfect！关机睡觉。第二天再开机，突然弹了个提示说GRUB引导损坏什么的，强行重启，结果直接黑屏只有左上角一个无限闪烁的光标。。。。。。。。。。。。 Round2：嗯？噢上次弄虚拟机的时候好像动过内核，好吧这次不加那么多插件了，就开默认服务运行，应该可以了吧。然后过了几天。。嗯？黑屏？ 很好，这次U盘插到手提上直接识别不了了，U盘指示灯持续闪烁，似乎被玩坏了。。我去这还不是U盘问题？然后。。。然后火速退货了。。。 特么真的是便宜没好货啊。。折腾了一个星期结果又回到原点，NAS依然无法上线。无奈下还是要继续考虑其他方案。 Round3：找找手头上有个2G老U盘空闲可以当系统盘，那就安装上去试试吧，然而使用起来发现2M/s写入的速度实在太感人了，安装个插件都要10分钟，遂放弃。 Round4：拿个4G Micro SD卡来试试，用那2G U盘坐安装盘，但U盘似乎不兼容Debian，安装程序找不到CR-ROM安装文件，中间重试了若干次。。。好吧。。只好在虚拟机安装，这下终于好了，然而当我要安装插件的时候。。 然后就卡！死！了！ 心好累。。至此宣布放弃，从此不再用U盘安装。。啊不对，劳资不玩OMV了！（手动再见） Round5：手头没SSD始终比较麻烦，能安装到U盘的NAS系统还有FreeNAS、NAS4Free，虽然是有8G内存达到要求，但没有ECC始终是一个风险，因为ZFS文件系统极度依赖内存的可靠性（数据无价）。看看手头上剩下的选择，虽然有些无奈，但只有黑群晖可以选择了。 黑群晖折腾篇群晖的系统都会在每一块硬盘安装一份，而不是安装在U盘，U盘只会在开机做引导作用，至少不会那么容易被玩坏。。 Round6：黑群晖安装教程可以参考这个帖子，不过建议黑群晖版本去官网找个新版本些的，XPEnology黑群晖官网下载。 按照教程修改引导镜像，写入U盘，第一次引导时要在启动菜单选择Install/Upgrade一项，进行群晖系统的安装。 使用Synology Assistant很快就可以找到NAS的机器 写入系统文件 安装完成，相比起OVM安装步骤(标准Linux安装程序)实在是太轻松了。 界面方面看起来比其他NAS系统都要好看得多，毕竟是商业系统。 安装完毕，接下来按照里面的帮助文档配置好系统就可以正常使用了，难度不会太高。 因为SATA接口的硬盘在群晖系统可以使用前都要先初始化，里面的数据都要被清空，由于1T硬盘已经存有各种资料，只好把群晖系统安装在250G的硬盘上，1T的数据只能等买新硬盘才能导入进去了。不过群晖可以做到插入移动硬盘等外部设备时自动开启共享，这样把硬盘插到USB硬盘座再连接上NAS大概可以临时解决访问问题。 群晖这些商业操作系统的界面相对于OMV这些开源系统都会人性化得多，除了移动硬盘即插即用即共享外还有其他一些亮点，例如在OMV里文件管理器是一个插件，而且显示方式是跟Linux结构是一样的，硬盘分区都藏在很深的目录里。 没有Linux基础的人一眼过去肯定是找不到目录的。。。 群晖就内置了一个文件管理器，目录显示也是简洁明了，操作起来就像用Windows文件管理器一样。 当然优点还有很多很多，有兴趣可以虚拟机安装一个试试或者上官网体验一下。 说了那么多群晖的优点也不是说完全没缺点的，例如因为系统主体是放在硬盘里的，休眠的硬盘经常会被唤醒（白群晖也应该会遇到），例如打开群晖的Web控制台，DLNA浏览目录时都会唤醒硬盘。如果Windows中共享文件夹映射驱动器后更是出现无法休眠的情况，在Web控制台中可以看到Windows访问共享目录的会话。 只有手动切断会话才可以使硬盘休眠，这个问题反而比OMV要糟糕了，因为NAS硬盘在映射驱动器后即使在不访问时也会持续运转，只有关机重启才会断开连接，不但功耗高了，长时间运行也会怕影响硬盘寿命。 OpenMediaVault·续Round7：没错，我反悔了，我又玩OMV了。先+1s 考虑到硬盘休眠唤醒这个问题不是很理想，于是打算再好好研究一下之前的问题，因为Web界面卡死，这一次选择在SSH里面安装软件包测试，执行apt-get update的时候弹出了这个错误 Err http://mirrors.163.com wheezy Release.gpg Something wicked happened resolving &apos;mirrors.163.com:http&apos; (-5 - No address associated with hostname) Err http://security.debian.org wheezy/updates Release.gpg Something wicked happened resolving &apos;security.debian.org:http&apos; (-5 - No address associated with hostname) Err http://packages.openmediavault.org stoneburner Release.gpg Something wicked happened resolving &apos;packages.openmediavault.org:http&apos; (-5 - No address associated with hostname) 无法解析域名。。DNS服务器挂了？但网络是正常的啊，其他电脑也能正常上网。Google了一番，终于检查到是/etc/resolv.conf里面的DNS地址是错误的，因为之前在虚拟机安装OMV的网卡是NAT模式，因此被设置成一个错误的DNS IP地址（虚拟网卡的网关IP，跟实际网络IP不同），立马更改回来，一切正常了，终于是明白了之前界面卡死的原因。 不过在Micro SD卡装的系统，安装程序那感人的速度又让我想起用树莓派的日子了。。。还好使用时不会影响反应速度 然后对比了一下两系统硬盘休眠被唤醒的情况： 测试条件：开启SMB/CIFS共享服务和DLNA共享服务，OMV和群晖均开启硬盘休眠功能 使用场景 OpenMediaVault 群晖 DLNA浏览目录，不点开媒体文件 休眠 唤醒 映射驱动器 休眠 唤醒 映射驱动器后，硬盘休眠后后点开”计算机”图标 几秒后自动唤醒 映射驱动器后一直唤醒 添加网络位置后，硬盘休眠后点开”计算机”图标 休眠 几秒后自动唤醒 登陆Web管理界面 休眠 唤醒 登陆Web管理界面，点击硬盘设置相关页面 唤醒 唤醒 打开Windows资源管理器，Quick access一栏中有NAS的文件记录 唤醒 唤醒 到底谁好谁坏呢？这里并没有得出结论，如果硬盘经常性唤醒，频繁开关可能会影响硬盘寿命。硬盘保持唤醒有即时反应的优势，因为休眠的硬盘启动到响应操作需要一定的时间，但这样整体功耗相对又会比较高。所谓熊掌不可兼得大概也就如此吧。 根据测试情况，建议尽量不要映射网络驱动器，这样可以避免出现时常唤醒硬盘的情况，而且使用映射网络驱动器时如果NAS没开机而其他电脑先开机还会有错误框弹出。当然了如果有需求的话除外，说实话这个功能还是挺好用的。 一个比较好的替代方案是使用添加网络位置功能（OMV有效），这样在Windows中只会把NAS共享文件夹看成是文件夹，而不是一个驱动器，虽然损失了一些高级功能（把共享文件夹看作一个真实分区），但硬盘再也不会频繁休眠唤醒了。 至此，NAS算是稳定配置好了，到头来还是用回了OMV，毕竟是Linux-based系统，耐得起折腾，使用黑裙晖还有合法性问题。不过自己DIY NAS，路上都是一个又一个坑啊，不想折腾还是买成品吧(´c_`)。 速度实测NAS最重要的一点就是要求网络环境达到千兆速度，最好先将网络环境升级到千兆有线网络（包括路由器、网线、网卡）再部署NAS，有线网络环境达标才能有比较好的访问速度。 读取速度：NAS到PC 写入速度：PC到NAS 总体感觉还是比较满意的，读写都能达到千兆网络的瓶颈速度，CPU占用率上升到40%左右，当然这还要靠强大的希捷1T硬盘，用了这么多年都仍然保持着读写100M/s的水准，因此一直都没考虑过要加固态硬盘。 WIFI环境下就变成了这个可怜的速度。。。 后记根据之前的需求列表，本次打造的完成情况： File Server √ DLNA Server √ 远程下载 × 软路由透明代理 × 远程下载Linux下的解决方案有迅雷Linux版xware，在OMV安装配置略麻烦，而且开启迅雷后所有硬盘无法休眠。由于目前没有24小时下载的需求，以后有需要再进一步研究。 软路由本来是打算在Virtualbox安装Openwrt，用一只无线网卡做AP。但配置起来比有线网卡要麻烦得多，初始化配置需要有线网卡，只好待有线网卡部署到位再进行配置。 附录：NAS系统组合方案关于NAS安装系统的方案，知乎上有一个问题“自己家里搭建NAS服务器有什么好方案”推荐看一看，其中答主MarKAde的总结比较好，简单归纳为以下几种： NAS单系统 Windows+DSM双系统，DSM作为主要存储、共享系统 FreeNAS系统，通过Jail插件跑Windows虚拟机 Windows+黑群晖双系统，Windows为主，黑群晖作为补充（答主推荐） Windows单系统 Linux单系统 ESXi或Hyper-V Server 个人建议有ECC内存就直接上FreeNAS。在Windows中虚拟化使用黑群晖的话可以在Hyper-V中直通硬盘，这样即使不想用Windows系统时直接裸跑黑群晖的话只要找一只U盘做启动盘就可以做到无缝切换了。]]></content>
-    </entry>
+<h2 id="原因分析"><a href="#原因分析" class="headerlink" title="原因分析"></a>原因分析</h2><p>本人之前使用的是<strong>openwrt 15.01</strong>版本，TFTP 刷回原厂固件表现为路由器 Power 指示灯一直是橙色，似乎还不断地自动重启，因此常规的救砖方式无效。先上结论，刷回原版固件出问题基本都是因为刷入第三方固件时<strong>破坏了路由器里面 Flash 的分区</strong>。</p>
+<p>WNDR3700v4 里面的 Flash 也有空间是用来存放设置，uboot 等内容，各自存放在不同的分区，而 firmware 部分才是真正的存放 Openwrt 系统的地方，Openwrt 里面看到的可用空间也是这部分的内容。而刷入的 img 文件（平时说的固件）其实也包括了整个 Flash 的分区信息。</p>
+<p>根据 Openwrt 官网 WNDR4300 Flash 布局的<a href="https://wiki.openwrt.org/zh-cn/toh/netgear/wndr4300">说明</a>，WNDR3700v4/WNDR4300（两款型号硬件基本一致，也都使用 NAND Flash）原版固件的 Flash 布局（为方便理解统一称为分区）是这样的：</p>
+<p><img src="/flash-wndr3700v4-to-stock-firmware/3394940427.png" alt="Screenshot 2016-12-03 09.35.17.png"></p>
+<p>Openwrt 官方固件是这样的</p>
+<p><img src="/flash-wndr3700v4-to-stock-firmware/344266447.png" alt="Screenshot 2016-12-03 09.35.23.png"></p>
+<p>对比可以看出来 Openwrt 做到了和原版一致的 Flash 分区，因此正常情况下通过 TFTP 方式刷官方固件因为分区一致是不会有什么问题的。但是如果之前刷入过<strong>增加可用空间的改版 Openwrt 固件</strong>的话，原始的 Flash 分区就会被破坏。增加空间的代码是这样的：</p>
+<pre><code>    wndr4300_mtdlayout=mtdparts=ar934x-nfc:256k(u-boot)ro,256k(u-boot-env)ro,256k(caldata),512k(pot),2048k(language),512k(config),3072k(traffic_meter),2048k(kernel),23552k(ubi),25600k@0x6c0000(firmware),256k(caldata_backup),-(reserved)
+    改为（将ubi和firmware增加96M，完全使用128M flash）
+    wndr4300_mtdlayout=mtdparts=ar934x-nfc:256k(u-boot)ro,256k(u-boot-env)ro,256k(caldata),512k(pot),2048k(language),512k(config),3072k(traffic_meter),2048k(kernel),121856k(ubi),123904k@0x6c0000(firmware),256k(caldata_backup),-(reserved)
+</code></pre>
+<p>可以看出改版固件增大了<strong>ubi</strong>和<strong>firmware</strong>的空间，的确使得 Openwrt 实际可用空间变大，但同时也破坏了原始 Flash 的空间分配（其实就是利用了后面的 reserved 空间，但这样 caldata_backup 位置也会后移，已经变得和官方固件不一致），直接刷回原版固件就很有可能出现问题。</p>
+<p>而 DD-WRT 固件也同样会产生这个问题，其 Flash 分区如下：</p>
+<table border="1">
+<tr align="center"><td rowspan="2">mtd0<br /><b>RedBoot</b><br />512KiB</th><td rowspan="2">mtd5<br /><b>board_config</b><br />512KiB</th><td rowspan="2">unused<br />2.5MiB</th><td rowspan="2">mtd4<br /><b>nvram</b><br />512KiB</th><td rowspan="2">unused<br />3MiB</th><td colspan="3">mtd1 <b>linux</b> 124160KiB (121.25MiB)</th></tr><tr align="center"><td>unused<br />1152KiB</td><td>mtd2<br /><b>rootfs</b><br />21504KiB</td><td>mtd3<br /><b>ddwrt</b><br />101504KiB</td></tr></table>
 
-    
-    <entry>
-      <title><![CDATA[NAS 打造日志-硬件方案篇]]></title>
-      <url>%2Farchives%2Fnas-build-hardware-solution.html</url>
-      <content type="text"><![CDATA[大概一年前就已经有打造NAS这个计划，不过因为各种原因一直没付诸于实践，最近因为把台式的CPU和主板二手出了终于是把这个计划提上了日程。经过一番Google和逛各种论坛对目前流行的NAS的硬件方案做了一下总结 NAS的硬件可以分为品牌NAS、服务器阵营和DIY组装三大方案。 品牌NAS品牌NAS的特点是提供好软硬件一套的解决方案，配置简单易于上手，甚至手机也有配套客户端。其中最出名的品牌就是群晖和QNAP，缺点是但价格往往较高，同等价位下DIY方案或服务器的性能足以秒掉其几条街。实际上，品牌NAS的主要价值在于软件。 品牌NAS方案2盘位性价比还是不错的，但4盘位版本通通都要4000+，之前考虑过实在是接受不了放弃了。 服务器整机说到NAS服务器最出名的那绝对是HP ProLiant MicroServer Gen8，2013年推出的微型服务器至今都还是大热门，相关评测很多，一搜一大把，推荐看看chiphell上的总结贴，现在德国海淘价格在1700左右不包税。 关于HP ProLiant MicroServer N54l：这是Gen8的前任，这一款型号比较旧现在已经彻底退出市场了。 另外还可以看看这个横向对比，个人觉得HP ML10 Gen9低配版也是一个不错的方案，低配版CPU是6代Intel G4400，300美金左右。服务器整机性价比一般都比较高，如果自己DIY组装，单独购买服务器级别的硬件反而会贵很多，因此建议直接购买服务器整机比较好。 DIY组装DIY方案优势在于配置灵活，便于升级和更换零件。搭建平台时首先要考虑的是CPU和主板，因为其他部件都需要根据这里的选择来确定。 CPU+主板家用芯片组按价格/性能/功耗低到高排列，主板如无注明均为ITX规格 方案1：ASROCK J3160-ITX（主板集成CPU，推荐） - 508元此方案使用Intel J3160低功耗CPU，与Intel N3150和Intel J1900均为国内常见方案，也是品牌NAS一些高端配置的CPU，但后两款是旧一代产品不优先考虑。主板有4xSATA3接口，一个PCI-E插槽和一个Mini-PCIE插槽，使用笔记本DDR3内存。 方案2：AMD 5350 + ASROCK AM1H-ITX - 100美元（不含运费税费）国外一个廉价NAS方案，性能功耗与J3160方案相当，有4xSATA3接口，使用DDR3内存，可惜主板CPU国内均不销售，需要海淘，海外党可以考虑。 方案3，4为主流芯片组/CPU方案，因此搭配方面比较灵活，可以根据需求自行更改配置，此处提供几个典型配置参考。 方案3：Intel G1840 + MSI H81I - 229+449=678元(京东)Intel G1840是4代Intel CPU最便宜的一款，已经可以满足上述使用需求。主板有2xSATA6接口+ 2xSATA3接口，DDR3内存。 如果需要6个SATA接口的主板可以参考下面两个方案： 方案3可选：Intel G1840 + B85M-E45（M-ATX）- 229+429=658元(京东，手机专享价)方案3的M-ATX方案，可提供6个SATA接口 方案4：Intel G4400 + B150M PRO-VDH（M-ATX） - 409+618=908元(京东，手机专享价)6代Intel CPU方案，M-ATX主板，可提供6个SATA接口，DDR4内存。 服务器芯片组主板均为ITX规格 方案5： ASRock C2750D4I / ASRock C2550D4I （主板集成CPU） - 2450/1750(淘宝) 方案6： ASRock E3C226D2I/E3C224D2I + LGA 1150 CPU - 1400/1300(淘宝) + CPU价格 方案5和方案6在外国论坛见得比较多，不过服务器芯片组的主板一般都比较贵，属于专业级/土豪级方案，因此仅列出作为参考不在本文讨论范围内。建议想用服务器芯片组方案的直接买服务器整机而不是DIY。 机箱家用NAS如果没有太高的要求可以选择ITX机箱，具有体积小的优点，而且淘宝也有比较多的NAS专用机箱可供选择。如果需要高扩展性的话可以考虑M-ATX机箱。 ITX方案1：IW-MS04 - 860元外观与Gen8相似度很高，有4个硬盘热插拔位，相当不错的一个NAS机箱，缺点是价格高。 ITX方案2：Fractal Design Node 304 - 599元6硬盘位机箱，设计方面中规中矩，不提供热插拔硬盘位。 M-ATX方案：Fractal Design Define Mini - 559元6硬盘位+2光驱位，NAS机箱 内存，电源，硬盘等需要根据上述不同方案选择不同的部件。内存方面如果使用FreeNAS务必使用ECC内存。电源需要根据机箱规格要求和个人需求挑选。硬盘推荐使用NAS专用硬盘，如WD的红盘等。 总结对于一般家庭使用环境来说，品牌NAS是一个比较好的选择，强大的系统，优秀的客户端支撑，不需要先掌握很多专业知识，就算是父母一辈都能轻松上手。不过如果想折腾的话还是可以考虑服务器方案或DIY方案，不过就易用性来说肯定不如群晖、QNAP这些品牌自带的系统。 对于工作或中小型企业的情况，品牌NAS很多功能并不是必须的，而且多盘位的价格也未必能接受得起。此环境最主要的功用就是储存，资金允许有稳定性要求建议考虑服务器方案，没有需求可以考虑DIY方案。 三种方案总结如下： 品牌NAS：一套完整的软硬件方案，不需要怎么操心各种配置。方便易用无需折腾， 服务器方案：稳定性高，适合7x24运行环境，有的服务器内置iLO或IPMI可以远程管理服务器而无需在现场。 DIY方案：可折腾，配置灵活，扩展性高，可以用有旧电脑淘汰下来的硬件组装。]]></content>
-    </entry>
+<p>其中 linux 分区在 Flash 上的地址对应的就是 Openwrt 和原版固件中 frimware，caldata_backup 和 reserved 的位置（0x0000006c0000-0x000008000000）。</p>
+<p>在 TFTP 模式下似乎并不会自动对 flash 执行 erase 命令（相当于格式化），仅仅覆盖了原来的内容，所以第三方固件的残留内容很有可能影响了原版固件的运作，因此需要手动执行该命令。为了方便擦除可以先把路由器刷到 DD-WRT，然后对 linux 分区执行 erase 命令，把 frimware 以后的内容全部清空再刷回原版固件。</p>
+<h2 id="固件和环境准备"><a href="#固件和环境准备" class="headerlink" title="固件和环境准备"></a>固件和环境准备</h2><ol>
+<li><p>在控制面板“启用或关闭 windows 功能”启用“TFTP 客户端”组件。</p>
+</li>
+<li><p>在 DD-WRT 下载 WNDR3700v4 最新固件<a href="http://www.dd-wrt.com/wiki/index.php/Netgear_WNDR3700#v4">ftp://ftp.dd-wrt.com/betas/2014/02-04-2014-r23503/netgear-wndr3700v4/wndr3700v4-factory.img</a>。</p>
+</li>
+<li><p>下载最新版固件，可选择中国/俄罗斯版(PRRU)固件或者国际版固件，PRRU 固件增加了 IPTV，IP-MAC，脱机下载等国际版没有的功能，而国际版则版本较新，修复改进的项目比较多，各位可以自行斟酌选哪个版本。</p>
+</li>
+</ol>
+<p><strong>Firmware Version 1.0.2.80 (All Regions Except China &amp; Russia)</strong><br><a href="http://www.downloads.netgear.com/files/GDC/WNDR3700V4/WNDR3700v4-V1.0.2.80.zip">http://www.downloads.netgear.com/files/GDC/WNDR3700V4/WNDR3700v4-V1.0.2.80.zip</a></p>
+<p><strong>Firmware Version 1.0.1.60 (For China and Russia Only)</strong><br><a href="http://www.downloads.netgear.com/files/GDC/WNDR3700V4/WNDR3700v4_PRRU_FW_V1.0.1.60.zip">http://www.downloads.netgear.com/files/GDC/WNDR3700V4/WNDR3700v4_PRRU_FW_V1.0.1.60.zip</a></p>
+<p>参考帖子:<br><a href="http://www.right.com.cn/forum/thread-185263-1-1.html">http://www.right.com.cn/forum/thread-185263-1-1.html</a><br><a href="http://www.right.com.cn/forum/thread-154774-1-1.html">http://www.right.com.cn/forum/thread-154774-1-1.html</a></p>
+<h2 id="实现"><a href="#实现" class="headerlink" title="实现"></a>实现</h2><ol>
+<li><p>路由器断电后按住 RESET 键开机，等待电源指示灯变成绿色闪烁状态时松开，用网线连接路由器，网卡 IP 设置成 192.198.1.2（只要是同网段不是 192.168.1.1 的 IP 都可以），子网掩码 255.255.255.0，网关设置 192.168.1.1.</p>
+</li>
+<li><p>打开命令行窗口，切换目录到 DD-WRT 固件文件所在的目录，执行 <code>tftp -i 192.168.1.1 put wndr3700v4-factory.img</code>，稍等一段时间，路由器自动重启，等待电源指示灯变成绿色常亮即启动完成，如果长时间显示橙色尝试断电后重新通电。</p>
+</li>
+<li><p>设置路由器，浏览器打开 192.168.1.1，第一次登陆要先设置登陆用户名和密码，不更改默认会自动生成密码。主界面中点选 Service 选项卡，在下找到 Secure Shell 一栏，将 SSHd 改成 Enabled，其他保持默认，按最底部的 Apply Settings。然后切换到 Administration 选项卡，下面的 Remote Access 一栏，将 SSH Management 改成 Enabled，其他保持默认，按最底部的 Apply Settings。</p>
+</li>
+</ol>
+<p><img src="/flash-wndr3700v4-to-stock-firmware/136554523.png" alt="Screenshot 2016-12-03 00.09.34.png"></p>
+<p><img src="/flash-wndr3700v4-to-stock-firmware/701989518.png" alt="Screenshot 2016-12-03 00.23.31.png"></p>
+<ol start="4">
+<li>使用 SSH 工具登入，Windows 平台个人推荐<a href="http://mobaxterm.mobatek.net/">MobaXterm</a>，SSH 登陆用户名为 root，密码是之前设置的登陆密码，成功登陆后执行以下命令：</li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">mtd erase linux</span><br><span class="line">reboot</span><br></pre></td></tr></table></figure>
 
-    
-    <entry>
-      <title><![CDATA[先学Arduino而不是先学单片机]]></title>
-      <url>%2Farchives%2Flearn-arduino-rather-than-mcu.html</url>
-      <content type="text"><![CDATA[突然想起一个很重要的问题，为什么大家（包括我）都认为参加电子设计大赛，或者做点什么制作都非得要先学好单片机，还有模电数电这些基础知识？本文针对还没有足够专业知识的同学，大神可忽略~ 在实验室的时候，每当有师弟（师妹）来问“怎样才能弄出这个东西？”大家通常都会说“先学好单片机基础啦，像操作IO口啊，至少点亮个LED先，还有中断定时器串口I2CSPI什么的，然后就是学习控制一些芯片模块啊，对了还有模电数电基础，画电路板，做板要转印显影腐蚀，最后焊接调试。。。”如果不是对这些非常有兴趣的同学估计都要光速逃跑了。然后实验室留下的，都是对电子制作抱有强烈兴趣，能学下去的同学。 直到今天我才想起一个最基本的问题，我们学这些的最终目的： 不是要做一样东西出来吗？ 不是想把心目中的一个想法实现出来吗？ 一定需要学好那么多东西才能付诸实现？10年前的我们也许就需要这样，但是赶上时代发展的我们有Arduino这一神器。 What is Arduino？首先，Arduino算是一个开发平台，其中一个型号的开发板是长这样的 图片引用：arduino.cc Arduino是一个开发各类设备，让你比台式电脑更能充分感知和控制物理世界的生态系统。Arduino是一个基于一系列单片机电路板的开源物理计算平台，一个编写用于Arduino和Genuino开发板的软件开发环境和一个拥有活跃开发者和用户社区。Arduino可用于开发交互式物体，接受来自各类开关或传感器的输入，并能控制各种灯光、马达和其他物理输出装置。Arduino项目可以单独运行，也可以与您计算机上运行的软件（Processing、MaxMSP）配合使用。您可以手动组装简单的开发板，或购买预装的整套开发板， 还可以免费下载开源Arduino软件(IDE)。Arduino编程所用编程语言是以Processing多媒体编程环境为基础的物理计算平台Wiring。通过多年的努力，Arduino软件（IDE）已经演变成能支持由英特尔和三星等公司制造的众多核心板和开发板。 官方的介绍不明觉厉，简单地说，就是一个开发平台，使用C/C++编写代码，普通人都能轻松上手，制作出想要的东西。简单的可以做个自动或者手动遥控小车。 图片引用：www.robotshop.com 复杂的或者做个目前比较火的3D打印机 图片引用：ic.tweakimg.net 当然最好的，还是把你脑海中的创意付诸于实现。简而言之，你想做东西又不想学习单片机什么的，Arduino就是快速实现创意的最佳平台，但写代码是逃不掉的了(`・ω・´) Why Arduino明明有一个最快最简便的实现方法摆在面前，虽然我一直都知道这东西，却没想过它的意义何在。我们常常从51开始学单片机，然而 当我们在学单片机架构，CPU，ROM，RAM，寄存器等各种理论的时候，用Arduino的人在准备开发环境。 当我们在研究IO口，中断，定时器，如何使用各种通信协议的时候，用Arduino的人已经在尝试跟着教程写程序了。 当我们在纠结Keil破解之类的问题时，用Arduino的人大概已经自己写出了完整的程序了。 在Arduino写程序的时候，完全不需要知道单片机是什么东西，只需要根据官方提供的各种函数写代码，就像编写电脑程序一样，做到了底层无关，底层硬件对用户是透明的，我们只需要集中精力在软件方面。这样的好处是，至少不会再有这些学习51单片机几乎都要问一遍问题： delay函数要怎么写？我看不懂这些for语句是干什么的？ I2C怎么写？为什么一直都通信不了？ 串口怎么没输出的？怎么都是乱码？ 这些基本的驱动函数Arduino中都已经全部编写好，使用时只需要调用函数即可。入门速度跟51单片机相比提高的不只是一点点。这也是Arduino项目最开始的目的，让一般人，让不懂什么电子知识的人都能很方便的实现自己的想法，就像开车不需要了解里面各种构造一样。官方也提供了大量示例程序，这些程序基本通用而且简单容易上手，也推出了一些外围器件模块，方便用户拓展。 然而，虽然安利了一大波，但并不是说Arduino就是什么神器，简单地说就是把单片机操作各种底层寄存器羞涩难懂的步骤省掉了。Arduino开发板本身并没有任何模块，因此你在最开始学习时只是学怎么操作这块板的芯片。当你需要操作矩阵键盘，数码管，液晶屏，电机这些东西（统称为外设）时，还是需要了解这些外设其中的原理，但单片机这个门槛你已经跨过了。但是， 学习Arduino之前首先要学习C语言，此乃基本功。 操作一些官方没有例子的器件（芯片）的时候，还是需要看芯片手册或者一些教程。 当需要更深入了解底层/电子知识时，就需要进一步的学习了。 总而言之，Arduino就是创作/电子制作启蒙工具，实质还是电子积木的形式，但这的确是快速实现一些idea最理想最便捷的平台。不过未来要把做出来的东西整合起来的话，就需要更深入学习其他知识了，例如绘制和制作电路板。 当然，Arduino并不适合所有人，有的同学的确是想学习了解单片机的内部结构，或者从一开始起点比较高，做出来的东西接近一个实际产品（比如我，逃 也许有同学要问： 那已经不再需要学习单片机了？ Arduino使用的就是一款AVR单片机，当你已经不满足于仅使用Arduino提供的库函数的时候，你就可以打开库函数的源代码，当你都看懂之后，你会发现你已经学会如何使用AVR单片机了 当你掌握AVR单片机再回头看51单片机，你就会发现 “51单片机好难用啊” 虽然我最开始不是从Arduino学起，都是先学习51单片机，但当我接触AVR后，我就发现 卧槽我一定是我用过最爽的单片机（手动滑稽 最后，更多Arduino信息可以在官方网站了解更多https://www.arduino.cc 如果还有同学有兴趣并看到这个地方的话 我想说我们常说的单片机比较正确的叫法是微控制器/微处理器，不过因为历史的原因已经习惯这个叫法了。 对于很多工科专业的同学来说，51单片机是大学课程的内容之一，但Arduino对于大一大二模电数电单片机都还沒教的同学来说，Arduino会比较适合入门电子世界。]]></content>
-    </entry>
+<ol start="5">
+<li><p>路由器自动重启，此时因为固件已被刷除自动进入 TFTP 模式，等待电源指示灯变成绿色闪烁，切换目录到原厂固件文件所在的目录，在命令行窗口根据下载的版本输入<code>tftp -i 192.168.1.1 put WNDR3700v4-V1.0.1.60PRRU.img</code> 或 <code>tftp -i 192.168.1.1 put WNDR3700v4-V1.0.2.80.img</code>稍等一段时间，路由器自动重启，如果启动失败尝试重新通电。</p>
+</li>
+<li><p>把网卡改回自动获取 IP 地址，至此完成刷机步骤。</p>
+</li>
+</ol>
+<p><img src="/flash-wndr3700v4-to-stock-firmware/1620348105.png" alt="Screenshot 2016-11-23 16.07.45.png"></p>
+]]></content>
+      <categories>
+        <category>Tech</category>
+      </categories>
+      <tags>
+        <tag>WNDR3700v4</tag>
+        <tag>OpenWRT</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>电信光纤升级笔记</title>
+    <url>/home-fiber-network-upgrade-log/</url>
+    <content><![CDATA[<p>电信的光纤升级改造计划已经搞了好几年，虽然一直都有想升级的想法，但是之前电信一直都说线路没有覆盖到不能升级，到了最近终于说是覆盖到小区了，不过去了电信营业厅问才知道升级也要收钱的( ˘･з･)没想到去完营业厅第二天电信（不是营业厅的人）就打电话来说现在要光进铜退，可以免费升光纤，我擦。。。。还好没同意升级不然白花钱了。</p>
+<span id="more"></span>
 
-    
-    <entry>
-      <title><![CDATA[修改你的Windows安装语言并升级到对应语言的Windows8/8.1/10]]></title>
-      <url>%2Farchives%2Fmodify-install-language-and-upgrade.html</url>
-      <content type="text"><![CDATA[本文方法适用场景：希望把系统升级到另一个语言的系统版本（作为原生语言），而不需要额外添加语言包。适用于Windows7/8/8.1使用ISO升级安装。 Step 1：把Windows界面语言设置为目标语言A: Windows 7环境（非Ultimate版本）使用Vistalizator修改 B: Windows 7 Ultimate/Windows 8/Windows 8.1（单语言版除外）参考微软官方文档即可Windows 7 UltimateWindows 8/Windows 8.1 Step 2：修改注册表键值如果不执行Step 1就执行这一步，直接升级时会出现无法选择“保留应用方式升级安装”的选项，因为系统语言与镜像的语言不一致 参考自http://www.ithome.com/html/win10/203571.htm Windows系统在注册表中有记录专门记录安装语言的键值，1、按Win+R打开运行，输入regedit回车打开注册表编辑器；2、展开以下位置：HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Nls\Language3、在右侧最底部找到名为InstallLanguage的注册表键值，该键值即代表系统的显示语言。我们要做的就是将其修改为想要升级到的系统语言代码即可，如下图所示： 比如，现有系统有英文，你想升级到的系统为简体中文版，则将其修改为0804。反之，如果现有系统为中文，想要升级到英文版系统，则将其修改为0409。不同国家或地区语言代码可点此查看 Step 3：执行升级安装至此你的系统的默认语言已经完全改掉，再将不需要的语言包删除，那么你的系统已经变成原生目标语言版本的系统了，最后执行新系统的升级安装即可]]></content>
-    </entry>
+<h2 id="配置"><a href="#配置" class="headerlink" title="配置"></a>配置</h2><p>言归正传，经过安装师傅一番布线，配置好了光纤。电信送的光猫背后有两个网络接口，推测（后来在超级管理员管理界面证实）千兆口用来上网，百兆口是电信 IPTV。另外电话就是普通的固话了，另外竟然还提供了个 USB 插口，未测试是不是可以插 U 盘做 NAS 之类的。</p>
+<p>默认光猫是带自动拨号的，连上光猫的 wifi 或者千兆网线就可以不用拨号立即上网，也就是所谓的<strong>路由模式</strong>，光猫充当路由器，对于一般用户来说这个设定已经很好用了。</p>
+<p>如果千兆口后面接二级路由器的话根据不同情况要分别设置：一种是千兆口接二级路由器的 WAN 口，此时路由器必须改成与光猫不同 IP 网段，不同品牌教程不一样，这里列一个<a href="http://service.tp-link.com.cn/detail_article_3241.html">TP-LINK 的参考</a>，新的 TP-LINK 路由器似乎可以自动识别并自动更改设置无需人工修改。</p>
+<p>一开始是打算就这样用路由模式也不错，但光猫只能更改很基本的设定，像 DMZ，端口转发，DDNS 这些功能通通不能设置，只能以<strong>超级管理员</strong>身份登入才能更改，但即使是这个管理界面反应慢，也不好设置，说白了就是光猫的固件烂。于是打算把光猫改成传说中的<strong>桥接模式</strong>，光猫仅仅起到<a href="https://zh.wikipedia.org/wiki/%E6%A9%8B%E6%8E%A5%E5%99%A8">桥接作用</a>，让接在千兆口后面的路由器负责拨号和管理，这样就和以前用 ADSL 时的方式一样了。</p>
+<p><img src="/home-fiber-network-upgrade-log/62885993.jpg" alt="天翼1.jpg"></p>
+<p><img src="/home-fiber-network-upgrade-log/522741982.jpg" alt="ty2.jpg"></p>
+<p><img src="/home-fiber-network-upgrade-log/1515762916.jpg" alt="ty3.jpg"></p>
+<p>不得不说这个 web 设置界面还是做的挺不错的，之前看过外国的一些营运商定制路由器也是类似这种界面，不过也是阉割各种高级功能就是了，而且还只能用营运商给的路由器拨号。</p>
+<p><img src="/home-fiber-network-upgrade-log/1437351207.jpg" alt="ty4.jpg"></p>
+<p><img src="/home-fiber-network-upgrade-log/2600077046.jpg" alt="ty5.jpg"></p>
+<p>网络设置就三个页面能改，然而都并没有什么卵用，顺便一提局域网地址一栏并不能改网段，把 IP 改成 192.168.2.1 然后你会发现 DHCP 居然还是分 192.168.1.x 的地址，这神 bug。。</p>
+<p>重头戏要来了，退出登录，重新输入传说中的超级管理员账号<strong>telecomadmin</strong>和密码<strong>nE7jA%5m</strong></p>
+<p><img src="/home-fiber-network-upgrade-log/2615369543.png" alt="ty6.png"></p>
+<p>界面立马就不同了</p>
+<p><img src="/home-fiber-network-upgrade-log/3243730675.png" alt="ty7.png"></p>
+<p>就是在这个页面把模式的 Route 改成 Bridge，比较幸运没有遇到选项变灰不能修改的情况</p>
+<p><img src="/home-fiber-network-upgrade-log/494868019.png" alt="ty8.png"></p>
+<p><img src="/home-fiber-network-upgrade-log/1220477479.png" alt="ty9.png"></p>
+<p>再看看其他页面，一般路由器的功能基本都齐了，不过不知 DDNS 要怎么设置，遂放弃。管理界面不是特别好用，所以还是让二级路由器拨号和管理比较好。</p>
+<h2 id="家庭网络环境的优化"><a href="#家庭网络环境的优化" class="headerlink" title="家庭网络环境的优化"></a>家庭网络环境的优化</h2><p>升级了光纤网络，自然也应当对网络环境<del>批判</del>优化一番，现在的家庭网络拓扑是这样的：</p>
+<p><img src="/home-fiber-network-upgrade-log/946060881.png" alt="网络拓扑.png"></p>
+<p>客厅中一体机支持 USB 和无线连接，事实证明无线连接非常好用，这样一体机不需要考虑布线的问题了。</p>
+<p>因为老房屋一般都没有预埋网线，书房网络连接最开始是以无线方式连接到路由器的，但那时的无线路由器和无线网卡并不是特别好用（802.11g 时代），后来改成拉一条网线在地面直接从客厅直连到书房的，但在出现多次有人因为网线被绊倒的情况后考虑到安全方面的原因改成了用<a href="http://www.tp-link.com.cn/product_336.html">无线电力猫（路由器）</a> 充当网线，顺便解决了全屋无线覆盖率问题，本来电力猫的网线是接到书房电脑上的现在改成接到 NAS，电脑无线方式连接电力猫。但是问题也很明显，现在虽然配置了 NAS 但整体网络环境并没有达到千兆速度。电力猫也是各种问题，首先本身只有百兆接口，通过电力线传输速度达不到 100Mbps，而电力猫有时会也因为干扰或者其他问题出现无法上网的情况。目前 NAS 主要是用来储存照片和文件，如果要作为生产力用肯定要先升级网络环境。</p>
+<p>主路由使用 NETGEAR WNDR3700v4，刷了 openwrt 当作翻墙网关,有兴趣的可以参考<a href="https://cokebar.info/archives/978">教程</a>，不过现在最主要的作用是为 PS4 提供透明代理环境，保证联机质量，以及无污染 DNS 环境。但此方案实际上遇到了很麻烦的问题：主路由偶尔因为 DNS 解析出现问题导致全屋网络异常，表现为网页无法解析，主要原因是上游境外 DNS 服务器连接超时引起（公共 DNS 或 shadowsocks 服务器连接超时会出现此问题），常常需要人工维护。</p>
+<p>按照现有环境和需要，改成以下网络拓扑：</p>
+<p><img src="/home-fiber-network-upgrade-log/867703132.png" alt="改良拓扑.png"></p>
+<p>主路由取消作为翻墙网关的作用，书房添加千兆交换机提供有线接口连接，再安装一个路由器负责透明代理，连接上去的所有设备均处于无墙环境，既满足翻墙需要，也避免了因为翻墙问题影响到主路由。偶然间发现一个 GL-iNet 迷你路由器很适合当翻墙网关，99 元的价位比较合理，还可以很方便的随身携带到处愉快地翻墙(´ΘωΘ`)</p>
+<p><img src="/home-fiber-network-upgrade-log/3622431413.jpg" alt="TB1PGnyJpXXXXbkXFXXXXXXXXXX_!!0-item_pic.jpg"></p>
+<h2 id="未来"><a href="#未来" class="headerlink" title="未来"></a>未来</h2><p>未来打算进一步优化网络，将电力猫线路重新换成网线，以钉墙方式安装网线，这样使主路由到书房网速可以达到千兆。电力猫保留安装以保证无线覆盖率。</p>
+<p><img src="/home-fiber-network-upgrade-log/3364060589.png" alt="理想拓扑.png"></p>
+]]></content>
+      <categories>
+        <category>Tech</category>
+      </categories>
+      <tags>
+        <tag>网络</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>先学Arduino而不是先学单片机</title>
+    <url>/learn-arduino-rather-than-mcu/</url>
+    <content><![CDATA[<p>突然想起一个很重要的问题，为什么大家（包括我）都认为参加电子设计大赛，或者做点什么制作都非得要先学好单片机，还有模电数电这些基础知识？<br><em>本文针对还没有足够专业知识的同学，大神可忽略~</em></p>
+<span id="more"></span>
 
-    
-    <entry>
-      <title><![CDATA[第一篇]]></title>
-      <url>%2Farchives%2Ffirst-blog.html</url>
-      <content type="text"><![CDATA[其实好久以前就想部署个博客耍耍，不过一直没有提上过日程，想着又要服务器又要域名各种麻烦什么的。近段时间心血来潮想写文章，今天终于下定决心在我的御用Bandwagonhost主机部署好了，嘛虽然连域名还没决定好被人吐槽域名中二(ˉ﹃ˉ)反正很快就会弄好域名然后正式写文章了(:3 」∠ ) 想起第一次想弄网站是小学的时候，不过那时纯粹是玩玩的性质，也不可能有资金可以买域名，租服务器什么的（当年的互联网环境和现在也不一样），只能在自己的电脑上用花生壳+Apache建起网站玩一下。2015年因为GFW发大招的契机租了个Bandwagonhost的VPS作为翻墙服务器用，不过没多久就因为网速过慢就很少再用它了（作为后备服务器）。不过长大了再想建服务器才发现，这特么一点都不简单啊，光是搭服务器就要会各种Linux命令，自己维护服务器和做备份什么的，还要提心吊胆哪天被人攻击，当年的我还是太天真了( ×ω× )虽然自建服务器后也有考虑过要不要挂个博客上去，不过一直都没明确的目标去实现，近段时间心血来潮想写写文章，终于是把建博客的事情提上了日程，一开始是考虑在github上建博客，不过试用了下觉得还是不如专门的博客程序来得方便，经过大神师弟Y!an的建议，考虑到VPS的性能不足以驾驭WordPress，最终确定了用Typecho来建博客。虽然自建博客是麻烦点，不过好歹是自己服务器建的博客，可以随心所欲地写文章，不用担心国内博客网站和谐或者国外博客网站被墙的问题了（虽然域名还是有一定的风险）。]]></content>
-    </entry>
 
-    
-  
-  
+<p>在实验室的时候，每当有师弟（师妹）来问“怎样才能弄出这个东西？”大家通常都会说“先学好单片机基础啦，像操作IO口啊，至少点亮个LED先，还有中断定时器串口I2CSPI什么的，然后就是学习控制一些芯片模块啊，对了还有模电数电基础，画电路板，做板要转印显影腐蚀，最后焊接调试。。。”如果不是对这些非常有兴趣的同学估计都要光速逃跑了。然后实验室留下的，都是对电子制作抱有强烈兴趣，能学下去的同学。</p>
+<p>直到今天我才想起一个最基本的问题，我们学这些的最终目的：</p>
+<ul>
+<li>不是要做一样东西出来吗？</li>
+<li>不是想把心目中的一个想法实现出来吗？</li>
+</ul>
+<p>一定需要学好那么多东西才能付诸实现？<br>10年前的我们也许就需要这样，但是赶上时代发展的我们有Arduino这一神器。</p>
+<h2 id="What-is-Arduino？"><a href="#What-is-Arduino？" class="headerlink" title="What is Arduino？"></a>What is Arduino？</h2><p>首先，Arduino算是一个开发平台，其中一个型号的开发板是长这样的</p>
+<p><img src="/learn-arduino-rather-than-mcu/686691503.jpg" alt="ArduinoUno_R3_Front_450px.jpg"></p>
+<p><em>图片引用：arduino.cc</em></p>
+<blockquote>
+<p>Arduino是一个开发各类设备，让你比台式电脑更能充分感知和控制物理世界的生态系统。Arduino是一个基于一系列单片机电路板的开源物理计算平台，一个编写用于Arduino和Genuino开发板的软件开发环境和一个拥有活跃开发者和用户社区。<br>Arduino可用于开发交互式物体，接受来自各类开关或传感器的输入，并能控制各种灯光、马达和其他物理输出装置。Arduino项目可以单独运行，也可以与您计算机上运行的软件（Processing、MaxMSP）配合使用。您可以手动组装简单的开发板，或购买预装的整套开发板， 还可以免费下载开源Arduino软件(IDE)。<br>Arduino编程所用编程语言是以Processing多媒体编程环境为基础的物理计算平台Wiring。通过多年的努力，Arduino软件（IDE）已经演变成能支持由英特尔和三星等公司制造的众多核心板和开发板。</p>
+</blockquote>
+<p>官方的介绍不明觉厉，简单地说，就是一个开发平台，使用C/C++编写代码，普通人都能轻松上手，制作出想要的东西。简单的可以做个自动或者手动遥控小车。</p>
+<p><img src="/learn-arduino-rather-than-mcu/1351620264.jpg" alt="mini-dfrobotshop-rover-kit-arduino-uno-large.jpg"></p>
+<p><em>图片引用：<a href="http://www.robotshop.com/">www.robotshop.com</a></em></p>
+<p>复杂的或者做个目前比较火的3D打印机</p>
+<p><img src="/learn-arduino-rather-than-mcu/451981649.jpeg" alt="2000550803.jpeg"></p>
+<p><em>图片引用：ic.tweakimg.net</em></p>
+<p>当然最好的，还是把你脑海中的创意付诸于实现。<br>简而言之，你想做东西又不想学习单片机什么的，Arduino就是快速实现创意的最佳平台，但写代码是逃不掉的了(`・ω・´)</p>
+<h2 id="Why-Arduino"><a href="#Why-Arduino" class="headerlink" title="Why Arduino"></a>Why Arduino</h2><p>明明有一个最快最简便的实现方法摆在面前，虽然我一直都知道这东西，却没想过它的意义何在。我们常常从51开始学单片机，然而</p>
+<ul>
+<li>当我们在学单片机架构，CPU，ROM，RAM，寄存器等各种理论的时候，用Arduino的人在准备开发环境。</li>
+<li>当我们在研究IO口，中断，定时器，如何使用各种通信协议的时候，用Arduino的人已经在尝试跟着教程写程序了。</li>
+<li>当我们在纠结Keil破解之类的问题时，用Arduino的人大概已经自己写出了完整的程序了。</li>
+</ul>
+<p>在Arduino写程序的时候，完全不需要知道单片机是什么东西，只需要根据官方提供的各种函数写代码，就像编写电脑程序一样，做到了底层无关，<strong>底层硬件对用户是透明的</strong>，我们只需要集中精力在软件方面。这样的好处是，至少不会再有这些学习51单片机几乎都要问一遍问题：</p>
+<ul>
+<li>delay函数要怎么写？我看不懂这些<code>for</code>语句是干什么的？</li>
+<li>I2C怎么写？为什么一直都通信不了？</li>
+<li>串口怎么没输出的？怎么都是乱码？</li>
+</ul>
+<p>这些基本的驱动函数Arduino中都已经全部编写好，使用时只需要调用函数即可。入门速度跟51单片机相比提高的不只是一点点。这也是Arduino项目最开始的目的，让一般人，让不懂什么电子知识的人都能很方便的实现自己的想法，就像开车不需要了解里面各种构造一样。官方也提供了大量示例程序，这些程序基本通用而且简单容易上手，也推出了一些外围器件模块，方便用户拓展。</p>
+<p>然而，虽然安利了一大波，但并不是说Arduino就是什么神器，简单地说就是把单片机操作各种底层寄存器羞涩难懂的步骤省掉了。Arduino开发板本身并没有任何模块，因此你在最开始学习时只是学怎么操作这块板的芯片。当你需要操作矩阵键盘，数码管，液晶屏，电机这些东西（统称为外设）时，还是需要了解这些外设其中的原理，但单片机这个门槛你已经跨过了。<br>但是，</p>
+<ul>
+<li>学习Arduino之前首先要学习C语言，此乃基本功。</li>
+<li>操作一些官方没有例子的器件（芯片）的时候，还是需要看芯片手册或者一些教程。</li>
+<li>当需要更深入了解底层/电子知识时，就需要进一步的学习了。</li>
+</ul>
+<p>总而言之，Arduino就是创作/电子制作启蒙工具，实质还是电子积木的形式，但这的确是快速实现一些idea最理想最便捷的平台。不过未来要把做出来的东西整合起来的话，就需要更深入学习其他知识了，例如绘制和制作电路板。</p>
+<p>当然，Arduino并不适合所有人，有的同学的确是想学习了解单片机的内部结构，或者从一开始起点比较高，做出来的东西接近一个实际产品（比如我，逃</p>
+<p>也许有同学要问：</p>
+<p><strong>那已经不再需要学习单片机了？</strong></p>
+<p>Arduino使用的就是一款AVR单片机，当你已经不满足于仅使用Arduino提供的库函数的时候，你就可以打开库函数的源代码，当你都看懂之后，你会发现你已经学会如何使用AVR单片机了</p>
+<p>当你掌握AVR单片机再回头看51单片机，你就会发现</p>
+<p><strong>“51单片机好难用啊”</strong></p>
+<p>虽然我最开始不是从Arduino学起，都是先学习51单片机，但当我接触AVR后，我就发现</p>
+<p><strong>卧槽我一定是我用过最爽的单片机</strong>（手动滑稽</p>
+<p>最后，更多Arduino信息可以在官方网站了解更多<a href="https://www.arduino.cc/">https://www.arduino.cc</a></p>
+<hr>
+<p>如果还有同学有兴趣并看到这个地方的话</p>
+<ul>
+<li>我想说我们常说的单片机比较正确的叫法是<strong>微控制器/微处理器</strong>，不过因为历史的原因已经习惯这个叫法了。</li>
+<li>对于很多工科专业的同学来说，51单片机是大学课程的内容之一，但Arduino对于大一大二模电数电单片机都还沒教的同学来说，Arduino会比较适合入门电子世界。</li>
+</ul>
+]]></content>
+      <categories>
+        <category>Learning</category>
+      </categories>
+      <tags>
+        <tag>Arduino</tag>
+        <tag>单片机</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>IGD passthrough for Intel NUC8i7BEH</title>
+    <url>/igd-passthrough-for-intel-nuc8i7beh/</url>
+    <content><![CDATA[<h1 id="Host-Configuration"><a href="#Host-Configuration" class="headerlink" title="Host Configuration"></a>Host Configuration</h1><p>Virtualization Environment: Proxmox 7.0 (GRUB)<br>Hardware: Intel NUC NUC8i7BEH<br>BIOS: UEFI Mode</p>
+<span id="more"></span>
+
+<h1 id="Proxmox-Configuration"><a href="#Proxmox-Configuration" class="headerlink" title="Proxmox Configuration"></a>Proxmox Configuration</h1><h2 id="Enable-IOMMU"><a href="#Enable-IOMMU" class="headerlink" title="Enable IOMMU"></a>Enable IOMMU</h2><p>Update <code>/etc/default/grub</code>.<br>Find the line with <code>GRUB_CMDLINE_LINUX_DEFAULT</code>. Set to</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">GRUB_CMDLINE_LINUX_DEFAULT=&quot;quiet intel_iommu=on video=efifb:off,vesafb:off&quot;</span><br></pre></td></tr></table></figure>
+<p>Then save the changes and update grub.<br><code>update-grub</code> </p>
+<h2 id="Load-VFIO-module"><a href="#Load-VFIO-module" class="headerlink" title="Load VFIO module"></a>Load VFIO module</h2><p>Add the following to <code>/etc/modules</code>:</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">vfio</span><br><span class="line">vfio_iommu_type1</span><br><span class="line">vfio_pci</span><br><span class="line">vfio_virqfd</span><br></pre></td></tr></table></figure>
+
+<h2 id="Blacklist-the-drivers"><a href="#Blacklist-the-drivers" class="headerlink" title="Blacklist the drivers"></a>Blacklist the drivers</h2><p>Add the following to <code>/etc/modprobe.d/pve-blacklist.conf</code></p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">blacklist snd_hda_intel</span><br><span class="line">blacklist snd_hda_codec_hdmi</span><br><span class="line">blacklist i915</span><br></pre></td></tr></table></figure>
+
+<h2 id="Enable-VFIO-for-IGD"><a href="#Enable-VFIO-for-IGD" class="headerlink" title="Enable VFIO for IGD"></a>Enable VFIO for IGD</h2><p>Run the following command to get device ID</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">$ lspci -n | grep -E &quot;0300&quot;</span><br><span class="line">00:02.0 0300: 8086:3ea5 (rev 01)</span><br></pre></td></tr></table></figure>
+
+<p>Copy the value <code>8086:3ea5</code>. Add this line to <code>/etc/modprobe.d/vfio.conf</code>:<br><code>options vfio-pci ids=8086:3ea5</code></p>
+<h2 id="Verification"><a href="#Verification" class="headerlink" title="Verification"></a>Verification</h2><p>Reboot. If the booting freeze at <code>Loading initial ramdisk ...</code> means IGD driver has been blacklisted.</p>
+<h1 id="Extract-IGD-ROM"><a href="#Extract-IGD-ROM" class="headerlink" title="Extract IGD ROM"></a>Extract IGD ROM</h1><p>Following the guide from this link <a href="https://github.com/tmbeck/nuc-passthrough#requirements">https://github.com/tmbeck/nuc-passthrough</a>. Generate and copy the ROM file to <code>/usr/share/kvm</code> of the host.</p>
+<h1 id="Configure-VM-configuration"><a href="#Configure-VM-configuration" class="headerlink" title="Configure VM configuration"></a>Configure VM configuration</h1><ul>
+<li>Set <code>Machine</code> to <code>Default (i440fx)</code>. Legacy IGD is not compatible with q35.</li>
+<li>Set <code>Display</code> to <code>none</code>. Legacy IGD requires VGA mode to be <code>none</code>.</li>
+</ul>
+<h1 id="Update-VM-configuration-from-command-line"><a href="#Update-VM-configuration-from-command-line" class="headerlink" title="Update VM configuration from command line"></a>Update VM configuration from command line</h1><p>Edit <code>/etc/pve/qemu-server/&lt;vmid&gt;.conf</code>. <code>&lt;vmid&gt;</code> refer to VM ID.<br>Add this line to the end of the file:</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">hostpci0: 0000:00:02.0,legacy-igd=1,romfile=&lt;rom-file&gt;.rom</span><br></pre></td></tr></table></figure>
+<p><code>&lt;rom-file&gt;</code> is the ROM file name copied into <code>/usr/share/kvm</code>.</p>
+<h1 id="Booting-the-VM"><a href="#Booting-the-VM" class="headerlink" title="Booting the VM"></a>Booting the VM</h1><p><strong>Make sure remote access is working properly</strong> in case of no signal output from HDMI.<br>Open Device Manager. Make sure IGD driver is working properly and no error code like 43.<br>You can also passthrough USB controller <code>0000:00:14.0</code> to use USB devices like keyboard and mouse.</p>
+<h1 id="Reference"><a href="#Reference" class="headerlink" title="Reference"></a>Reference</h1><p><a href="https://pve.proxmox.com/wiki/Pci_passthrough">https://pve.proxmox.com/wiki/Pci_passthrough</a><br><a href="https://github.com/tmbeck/nuc-passthrough">https://github.com/tmbeck/nuc-passthrough</a><br><a href="https://blog.timzhong.top/2020/09/27/pve-direct-pcie/">https://blog.timzhong.top/2020/09/27/pve-direct-pcie/</a><br><a href="https://www.10bests.com/win10-htpc-on-pve/">https://www.10bests.com/win10-htpc-on-pve/</a></p>
+]]></content>
+      <categories>
+        <category>Tech</category>
+      </categories>
+      <tags>
+        <tag>NUC8i7BEH</tag>
+        <tag>virtualization</tag>
+        <tag>Proxmox</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>NAS 打造日志-硬件方案篇</title>
+    <url>/nas-build-hardware-solution/</url>
+    <content><![CDATA[<p>大概一年前就已经有打造NAS这个计划，不过因为各种原因一直没付诸于实践，最近因为把台式的CPU和主板二手出了终于是把这个计划提上了日程。经过一番Google和逛各种论坛对目前流行的NAS的硬件方案做了一下总结</p>
+<span id="more"></span>
+
+
+<p>NAS的硬件可以分为品牌NAS、服务器阵营和DIY组装三大方案。</p>
+<h2 id="品牌NAS"><a href="#品牌NAS" class="headerlink" title="品牌NAS"></a>品牌NAS</h2><p>品牌NAS的特点是提供好软硬件一套的解决方案，配置简单易于上手，甚至手机也有配套客户端。其中最出名的品牌就是群晖和QNAP，缺点是但价格往往较高，同等价位下DIY方案或服务器的性能足以秒掉其几条街。实际上，品牌NAS的主要价值在于软件。</p>
+<p>品牌NAS方案2盘位性价比还是不错的，但4盘位版本通通都要4000+，之前考虑过实在是接受不了放弃了。</p>
+<p><img src="/nas-build-hardware-solution/909682240.png" alt="top.png"></p>
+<h2 id="服务器整机"><a href="#服务器整机" class="headerlink" title="服务器整机"></a>服务器整机</h2><p>说到NAS服务器最出名的那绝对是<strong>HP ProLiant MicroServer Gen8</strong>，2013年推出的微型服务器至今都还是大热门，相关评测很多，一搜一大把，推荐看看chiphell上的<a href="https://www.chiphell.com/thread-1196090-1-1.html">总结贴</a>，现在德国海淘价格在1700左右不包税。</p>
+<p><img src="/nas-build-hardware-solution/1838794806.png" alt="c03760124.png"></p>
+<p><img src="/nas-build-hardware-solution/1170288646.jpg" alt="profile_3_big.jpg"></p>
+<p><em>关于HP ProLiant MicroServer N54l：这是Gen8的前任，这一款型号比较旧现在已经彻底退出市场了。</em></p>
+<p>另外还可以看看这个<a href="https://www.chiphell.com/forum.php?mod=viewthread&tid=1586285&extra=page=2&filter=typeid&typeid=479">横向对比</a>，个人觉得<strong>HP ML10 Gen9</strong>低配版也是一个不错的方案，低配版CPU是6代Intel G4400，300美金左右。<br>服务器整机性价比一般都比较高，如果自己DIY组装，单独购买服务器级别的硬件反而会贵很多，因此建议直接购买服务器整机比较好。</p>
+<h2 id="DIY组装"><a href="#DIY组装" class="headerlink" title="DIY组装"></a>DIY组装</h2><p>DIY方案优势在于配置灵活，便于升级和更换零件。搭建平台时首先要考虑的是CPU和主板，因为其他部件都需要根据这里的选择来确定。</p>
+<h3 id="CPU-主板"><a href="#CPU-主板" class="headerlink" title="CPU+主板"></a>CPU+主板</h3><h4 id="家用芯片组"><a href="#家用芯片组" class="headerlink" title="家用芯片组"></a>家用芯片组</h4><p><em>按价格/性能/功耗低到高排列，主板如无注明均为ITX规格</em></p>
+<p><strong>方案1</strong>：ASROCK J3160-ITX（主板集成CPU，推荐）  -  508元<br>此方案使用Intel J3160低功耗CPU，与Intel N3150和Intel J1900均为国内常见方案，也是品牌NAS一些高端配置的CPU，但后两款是旧一代产品不优先考虑。主板有4xSATA3接口，一个PCI-E插槽和一个Mini-PCIE插槽，使用笔记本DDR3内存。</p>
+<p><img src="/nas-build-hardware-solution/1942169112.jpg" alt="J3160-ITX(L4).jpg"></p>
+<p><strong>方案2</strong>：AMD 5350 + ASROCK AM1H-ITX  -  100美元（不含运费税费）<br>国外一个廉价NAS方案，性能功耗与J3160方案相当，有4xSATA3接口，使用DDR3内存，可惜主板CPU国内均不销售，需要海淘，海外党可以考虑。</p>
+<p>方案3，4为主流芯片组/CPU方案，因此搭配方面比较灵活，可以根据需求自行更改配置，此处提供几个典型配置参考。</p>
+<p><strong>方案3</strong>：Intel G1840 + MSI H81I  -  229+449=678元(京东)<br>Intel G1840是<strong>4代Intel CPU</strong>最便宜的一款，已经可以满足上述使用需求。主板有2xSATA6接口+ 2xSATA3接口，DDR3内存。</p>
+<p>如果需要6个SATA接口的主板可以参考下面两个方案：</p>
+<p><strong>方案3可选</strong>：Intel G1840 + B85M-E45（M-ATX）- 229+429=658元(京东，手机专享价)<br>方案3的<strong>M-ATX</strong>方案，可提供6个SATA接口</p>
+<p><strong>方案4</strong>：Intel G4400 + B150M PRO-VDH（M-ATX） - 409+618=908元(京东，手机专享价)<br><strong>6代Intel CPU</strong>方案，<strong>M-ATX</strong>主板，可提供6个SATA接口，DDR4内存。</p>
+<h4 id="服务器芯片组"><a href="#服务器芯片组" class="headerlink" title="服务器芯片组"></a>服务器芯片组</h4><p><em>主板均为ITX规格</em></p>
+<p><strong>方案5</strong>： ASRock C2750D4I / ASRock C2550D4I （主板集成CPU）  -  2450/1750(淘宝)</p>
+<p><img src="/nas-build-hardware-solution/541946293.jpg" alt="C2550D4I-1(L).jpg"></p>
+<p><strong>方案6</strong>： ASRock E3C226D2I/E3C224D2I + LGA 1150 CPU  - 1400/1300(淘宝) + CPU价格</p>
+<p><img src="/nas-build-hardware-solution/3655661014.jpg" alt="E3C226D2I-1(L).jpg"></p>
+<p>方案5和方案6在外国论坛见得比较多，不过服务器芯片组的主板一般都比较贵，属于专业级/土豪级方案，因此仅列出作为参考不在本文讨论范围内。建议想用服务器芯片组方案的直接买服务器整机而不是DIY。</p>
+<h3 id="机箱"><a href="#机箱" class="headerlink" title="机箱"></a>机箱</h3><p>家用NAS如果没有太高的要求可以选择<strong>ITX机箱</strong>，具有体积小的优点，而且淘宝也有比较多的NAS专用机箱可供选择。如果需要高扩展性的话可以考虑M-ATX机箱。</p>
+<p><strong>ITX方案1</strong>：IW-MS04  -  860元<br>外观与Gen8相似度很高，有<strong>4个硬盘热插拔位</strong>，相当不错的一个NAS机箱，缺点是价格高。</p>
+<p><img src="/nas-build-hardware-solution/526838041.jpg" alt="1418883524CLMCG1.jpg"></p>
+<p><strong>ITX方案2</strong>：Fractal Design Node 304  -  599元<br>6硬盘位机箱，设计方面中规中矩，不提供热插拔硬盘位。</p>
+<p><img src="/nas-build-hardware-solution/298061044.jpg" alt="7ec6e1a6-8613-41ad-b693-3b534260659e.jpg"></p>
+<p><strong>M-ATX方案</strong>：Fractal Design Define Mini  -  559元<br>6硬盘位+2光驱位，NAS机箱</p>
+<p><img src="/nas-build-hardware-solution/919780192.jpg" alt="89488385-25a5-4640-be63-7c27e98efd68.jpg"></p>
+<h3 id="内存，电源，硬盘等"><a href="#内存，电源，硬盘等" class="headerlink" title="内存，电源，硬盘等"></a>内存，电源，硬盘等</h3><p>需要根据上述不同方案选择不同的部件。内存方面如果使用FreeNAS务必使用ECC内存。电源需要根据机箱规格要求和个人需求挑选。硬盘推荐使用NAS专用硬盘，如WD的红盘等。</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>对于一般家庭使用环境来说，<strong>品牌NAS</strong>是一个比较好的选择，强大的系统，优秀的客户端支撑，不需要先掌握很多专业知识，就算是父母一辈都能轻松上手。不过如果想折腾的话还是可以考虑服务器方案或DIY方案，不过就易用性来说肯定不如群晖、QNAP这些品牌自带的系统。</p>
+<p>对于工作或中小型企业的情况，品牌NAS很多功能并不是必须的，而且多盘位的价格也未必能接受得起。此环境最主要的功用就是储存，资金允许有稳定性要求建议考虑<strong>服务器方案</strong>，没有需求可以考虑<strong>DIY方案</strong>。</p>
+<p><strong>三种方案总结如下：</strong></p>
+<ul>
+<li><p><strong>品牌NAS</strong>：一套完整的软硬件方案，不需要怎么操心各种配置。方便易用无需折腾，</p>
+</li>
+<li><p><strong>服务器方案</strong>：稳定性高，适合7x24运行环境，有的服务器内置iLO或IPMI可以远程管理服务器而无需在现场。</p>
+</li>
+<li><p><strong>DIY方案</strong>：可折腾，配置灵活，扩展性高，可以用有旧电脑淘汰下来的硬件组装。</p>
+</li>
+</ul>
+]]></content>
+      <categories>
+        <category>Tech</category>
+      </categories>
+      <tags>
+        <tag>NAS</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>修改你的Windows安装语言并升级到对应语言的Windows8/8.1/10</title>
+    <url>/modify-install-language-and-upgrade/</url>
+    <content><![CDATA[<p>本文方法适用场景：希望把系统升级到另一个语言的系统版本（作为原生语言），而不需要额外添加语言包。适用于Windows7/8/8.1使用ISO升级安装。</p>
+<span id="more"></span>
+
+
+
+<h2 id="Step-1：把Windows界面语言设置为目标语言"><a href="#Step-1：把Windows界面语言设置为目标语言" class="headerlink" title="Step 1：把Windows界面语言设置为目标语言"></a>Step 1：把Windows界面语言设置为目标语言</h2><p><strong>A: Windows 7环境（非Ultimate版本）</strong><br>使用<a href="http://www.froggie.sk/en/index.html">Vistalizator</a>修改</p>
+<p><strong>B: Windows 7 Ultimate/Windows 8/Windows 8.1（单语言版除外）</strong><br>参考微软官方文档即可<br><a href="http://windows.microsoft.com/zh-cn/windows7/install-or-change-a-display-language">Windows 7 Ultimate</a><br><a href="http://windows.microsoft.com/zh-cn/windows-8/add-language-keyboard">Windows 8/Windows 8.1</a></p>
+<h2 id="Step-2：修改注册表键值"><a href="#Step-2：修改注册表键值" class="headerlink" title="Step 2：修改注册表键值"></a>Step 2：修改注册表键值</h2><p><em>如果不执行Step 1就执行这一步，直接升级时会出现无法选择“保留应用方式升级安装”的选项，因为系统语言与镜像的语言不一致</em></p>
+<p>参考自<a href="http://www.ithome.com/html/win10/203571.htm">http://www.ithome.com/html/win10/203571.htm</a></p>
+<blockquote>
+<p>Windows系统在注册表中有记录专门记录安装语言的键值，<br>1、按Win+R打开运行，输入regedit回车打开注册表编辑器；<br>2、展开以下位置：<br>HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Nls\Language<br>3、在右侧最底部找到名为InstallLanguage的注册表键值，该键值即代表系统的显示语言。我们要做的就是将其修改为想要升级到的系统语言代码即可，如下图所示：<br><img src="/modify-install-language-and-upgrade/20160127_111010_307.jpg" alt="注册表位置"></p>
+<p>比如，现有系统有英文，你想升级到的系统为简体中文版，则将其修改为0804。反之，如果现有系统为中文，想要升级到英文版系统，则将其修改为0409。不同国家或地区语言代码可<a href="https://msdn.microsoft.com/en-US/goglobal/bb964664.aspx">点此查看</a></p>
+</blockquote>
+<h2 id="Step-3：执行升级安装"><a href="#Step-3：执行升级安装" class="headerlink" title="Step 3：执行升级安装"></a>Step 3：执行升级安装</h2><p>至此你的系统的默认语言已经完全改掉，再将不需要的语言包删除，那么你的系统已经变成原生目标语言版本的系统了，最后执行新系统的升级安装即可</p>
+]]></content>
+      <categories>
+        <category>Tech</category>
+      </categories>
+      <tags>
+        <tag>Windows</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>为Windows apps应用设置本地代理</title>
+    <url>/setup-proxy-for-windows-apps/</url>
+    <content><![CDATA[<p>由于众所周知的原因，Wikipedia，Twitter，Facebook这些网站需要设置代理才可以正常访问。正常情况下，电脑安装了代理工具在浏览器或者普通程序中访问是没有问题的，但在Windows 8/8.1/10的商店程序（Windows apps）即使设置了代理也会出现无法连接的情况。<br><img src="/setup-proxy-for-windows-apps/1715843754.png"></p>
+<span id="more"></span>
+
+
+
+<h2 id="原因分析"><a href="#原因分析" class="headerlink" title="原因分析"></a>原因分析</h2><p>经过研究，原因跟Windows apps的运行机制有关系。默认情况下，所有Windows apps均运行在被称为”AppContainers”的独立进程上，默认情况下AppContainers会阻止网络流量发送到本地，因此Windows apps无法连接到本地代理服务器。而这个问题同样也影响了一些开发者使用Fiddler抓包工具本地分析和调试程序。</p>
+<p>在<a href="https://blogs.msdn.microsoft.com/fiddler/2011/12/10/revisiting-fiddler-and-win8-immersive-applications/">这篇博客</a>中作者介绍了使用新版Fiddler的工具或者下载独立的 EnableLoopback Utility 为特定程序设置启用Loopback通信功能（Exempt，豁免），我们也可以通过这个办法使被墙的apps连接本地代理服务器使代理生效。</p>
+<h2 id="具体步骤"><a href="#具体步骤" class="headerlink" title="具体步骤"></a>具体步骤</h2><p><em>感谢 <strong>Daniel</strong> 的提醒，Fiddler移动了程序的下载位置，已更新下载链接。</em><br>下载<a href="https://telerik-fiddler.s3.amazonaws.com/fiddler/addons/enableloopbackutility.exe">EnableLoopback Utility</a>工具并安装。</p>
+<p>如果想看到更详细的信息或者设置可以使用<a href="https://loopback.codeplex.com/">Windows Loopback Exemption Manager</a>，操作方法大同小异。使用Windows Loopback Exemption Manager可以看到Edge浏览器默认开启了这个功能，所以Edge才可以正常使用代理或者访问本地主机。</p>
+<p>安装好EnableLoopback Utility后程序自动打开，或者在开始菜单找到”Enable AppContainer Loopback”打开，根据需要点击要开启Loopback的程序，或者直接点”Exempt All”设置所有程序开启，最后点<strong>Save Changes</strong>即可，之后可以点 Refresh 刷新查看当前设置或者关闭程序。<br><img src="/setup-proxy-for-windows-apps/2178465291.png"></p>
+<p>此时再打开Wikipedia，已经可以正常访问。<br><img src="/setup-proxy-for-windows-apps/1374248038.jpg"></p>
+<p>该方法适用于大部分Windows apps程序，邮件程序亦可以正常连接Gmail邮箱，但仍然有部分应用不支持，如Facebook即使开启了Loopback仍然会出现连接超时的问题。</p>
+<hr>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p><a href="https://blogs.msdn.microsoft.com/fiddler/2011/12/10/revisiting-fiddler-and-win8-immersive-applications/">https://blogs.msdn.microsoft.com/fiddler/2011/12/10/revisiting-fiddler-and-win8-immersive-applications/</a><br><a href="https://my.oschina.net/farces/blog/616110">https://my.oschina.net/farces/blog/616110</a><br><a href="https://loopback.codeplex.com/">https://loopback.codeplex.com/</a></p>
+]]></content>
+      <categories>
+        <category>Tech</category>
+      </categories>
+      <tags>
+        <tag>Windows</tag>
+        <tag>代理</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Intel NUC8i7BEH 实现核显直通</title>
+    <url>/zh-CN/igd-passthrough-for-intel-nuc8i7beh/</url>
+    <content><![CDATA[<h1 id="宿主机环境"><a href="#宿主机环境" class="headerlink" title="宿主机环境"></a>宿主机环境</h1><p>虚拟化环境：Proxmox 7.0<br>硬件：Intel NUC NUC8i7BEH<br>BIOS：UEFI Mode</p>
+<span id="more"></span>
+
+
+<h1 id="配置PVE"><a href="#配置PVE" class="headerlink" title="配置PVE"></a>配置PVE</h1><h2 id="开启-IOMMU"><a href="#开启-IOMMU" class="headerlink" title="开启 IOMMU"></a>开启 IOMMU</h2><p>修改 <code>/etc/default/grub</code> 文件<br>找到 <code>GRUB_CMDLINE_LINUX_DEFAULT</code> 一行，替换为<br><code>GRUB_CMDLINE_LINUX_DEFAULT=&quot;quiet intel_iommu=on video=efifb:off,vesafb:off&quot;</code><br>保存后执行 <code>update-grub</code> 更新grub</p>
+<h2 id="加载-VFIO-模块"><a href="#加载-VFIO-模块" class="headerlink" title="加载 VFIO 模块"></a>加载 VFIO 模块</h2><p>修改 <code>/etc/modules</code> 文件，添加以下内容</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">vfio</span><br><span class="line">vfio_iommu_type1</span><br><span class="line">vfio_pci</span><br><span class="line">vfio_virqfd</span><br></pre></td></tr></table></figure>
+
+<h2 id="添加驱动黑名单"><a href="#添加驱动黑名单" class="headerlink" title="添加驱动黑名单"></a>添加驱动黑名单</h2><p>修改 <code>/etc/modprobe.d/pve-blacklist.conf</code> 添加以下内容：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">blacklist snd_hda_intel</span><br><span class="line">blacklist snd_hda_codec_hdmi</span><br><span class="line">blacklist i915</span><br></pre></td></tr></table></figure>
+
+<h2 id="绑定显卡到-VFIO"><a href="#绑定显卡到-VFIO" class="headerlink" title="绑定显卡到 VFIO"></a>绑定显卡到 VFIO</h2><p>执行 <code>lspci -n | grep -E &quot;0300&quot;</code> 查看并记录核显 VendorID 和 DeviceID</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">00:02.0 0300: 8086:3ea5 (rev 01)</span><br></pre></td></tr></table></figure>
+<p>修改 <code>/etc/modprobe.d/vfio.conf</code> 添加如下内容<br><code>options vfio-pci ids=8086:3ea5</code></p>
+<h2 id="验证"><a href="#验证" class="headerlink" title="验证"></a>验证</h2><p>重启，若启动界面卡在 <code>Loading initial ramdisk ...</code> 表示核显已被屏蔽<br>执行 <code>lsmod | grep vfio</code> 得到类似输出，表示已加载成功</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">vfio_pci               57344  2</span><br><span class="line">vfio_virqfd            16384  1 vfio_pci</span><br><span class="line">irqbypass              16384  14 vfio_pci,kvm</span><br><span class="line">vfio_iommu_type1       36864  1</span><br><span class="line">vfio                   36864  7 vfio_iommu_type1,vfio_pci</span><br></pre></td></tr></table></figure>
+
+<h1 id="提取核显ROM"><a href="#提取核显ROM" class="headerlink" title="提取核显ROM"></a>提取核显ROM</h1><p>参照 <a href="https://github.com/tmbeck/nuc-passthrough#requirements">https://github.com/tmbeck/nuc-passthrough</a> 提取核显ROM，放置到<code>/usr/share/kvm</code> ，下文假设文件路径为 <code>/usr/share/kvm/intel-iris-655.rom</code></p>
+<h1 id="配置虚拟机参数"><a href="#配置虚拟机参数" class="headerlink" title="配置虚拟机参数"></a>配置虚拟机参数</h1><ul>
+<li>Machine 必须设置为默认的 <code>i440fx</code> ，否则启动会提示 <code>legacy IGD assignment is not compatible with q35</code></li>
+<li>Display 必须设置为 <code>none</code> ，否则启动会提示 <code>legacy IGD assignment requires VGA mode to be &#39;none&#39;</code></li>
+<li>添加显卡 PCI 设备，NUC 对应 ID <code>0000:00:02.0</code></li>
+</ul>
+<h1 id="手工修改虚拟机配置"><a href="#手工修改虚拟机配置" class="headerlink" title="手工修改虚拟机配置"></a>手工修改虚拟机配置</h1><p>修改<code>/etc/pve/qemu-server/&lt;vmid&gt;.conf</code> 文件， <code>&lt;vmid&gt;</code> 对于虚拟机ID，找到添加的显卡设备一行，追加 <code>,legacy-igd=1,romfile=intel-iris-655.rom</code> ，启用 IDG Passthrough和加载ROM<br>如 <code>hostpci0: 0000:00:02.0</code><br>修改为 <code>hostpci0: 0000:00:02.0,legacy-igd=1,romfile=intel-iris-655.rom</code></p>
+<h1 id="尝试启动虚拟机"><a href="#尝试启动虚拟机" class="headerlink" title="尝试启动虚拟机"></a>尝试启动虚拟机</h1><p>提前确认好远程桌面服务启动正常，否则由于noVNC被禁用，无法控制操作系统。<br>进入设备管理器，检查显示驱动是否正常工作，没有感叹号提示。<br>此外可以选择直通USB控制器 <code>0000:00:14.0</code>，获得更好的使用体验。</p>
+<h1 id="Reference"><a href="#Reference" class="headerlink" title="Reference"></a>Reference</h1><p><a href="https://pve.proxmox.com/wiki/Pci_passthrough">https://pve.proxmox.com/wiki/Pci_passthrough</a><br><a href="https://github.com/tmbeck/nuc-passthrough">https://github.com/tmbeck/nuc-passthrough</a><br><a href="https://blog.timzhong.top/2020/09/27/pve-direct-pcie/">https://blog.timzhong.top/2020/09/27/pve-direct-pcie/</a><br><a href="https://www.10bests.com/win10-htpc-on-pve/">https://www.10bests.com/win10-htpc-on-pve/</a></p>
+]]></content>
+      <categories>
+        <category>Tech</category>
+      </categories>
+      <tags>
+        <tag>NUC8i7BEH</tag>
+        <tag>Proxmox</tag>
+        <tag>虚拟化</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Shutdown RabbitMQ consumer gracefully</title>
+    <url>/shutdown-rabbitmq-consumer-gracefully/</url>
+    <content><![CDATA[<p>Recently, I need to implement graceful shutdown feature in a message queue consumer handling a large number of transactions in production that can’t be terminated immediately by a simple kill command. Implementation was tricky, though, it’s a great chance to solid my concurrent programming foundation.</p>
+<span id="more"></span>
+
+<h2 id="Theory"><a href="#Theory" class="headerlink" title="Theory"></a>Theory</h2><p>So, the basic idea is to utilize Unix (Unix-like, and POSIX-compliant) signal, a form of IPC (Inter-process communication). User can notify the consumer by the <code>signal()</code> system call from other processes or command <code>kill [PID]</code>. By default, <code>kill</code> command sends <code>SIGTERM</code>, the signal causing program termination, to the target. We just follow the convention.</p>
+<p>PHP has a <a href="http://php.net/manual/en/book.pcntl.php">PCNTL extension</a> to manipulate signals. The thought of implementation is to preinstall a signal handler which set the global flag, then free resources and exit after the flag was detected by main loop.</p>
+<p>The difficulty here is that, system-level signals would interrupt normal execution of current process, which continues after the signal handler returns. The concurrent execution flow could result in issues such as synchronization and race condition. The buggy code might affect the system ferociously after a long uptime.</p>
+<p>A fairly straightforward and simple code is shown below:</p>
+<h2 id="Version-1"><a href="#Version-1" class="headerlink" title="Version 1"></a>Version 1</h2><figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="variable">$running</span> = <span class="literal">true</span>;</span><br><span class="line"></span><br><span class="line"><span class="variable">$connection</span> = <span class="keyword">new</span> AMQPStreamConnection(...);</span><br><span class="line"><span class="variable">$channel</span> = <span class="variable">$connection</span>-&gt;channel();</span><br><span class="line"></span><br><span class="line"><span class="variable">$callback</span> = <span class="function"><span class="keyword">function</span> (<span class="params"><span class="variable">$message</span></span>) </span>&#123;</span><br><span class="line">    pcntl_sigprocmask(SIG_BLOCK, [SIGTERM]);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Critical section entry</span></span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">    <span class="comment">// Critical section exit</span></span><br><span class="line"></span><br><span class="line">    pcntl_sigprocmask(SIG_UNBLOCK, [SIGTERM]);</span><br><span class="line">    pcntl_signal_dispatch();</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Initialization code</span></span><br><span class="line"><span class="comment">// ...</span></span><br><span class="line"><span class="variable">$channel</span>-&gt;basic_consume(..., <span class="variable">$callback</span>);</span><br><span class="line"></span><br><span class="line"><span class="variable">$signalHandler</span> = <span class="function"><span class="keyword">function</span> (<span class="params"><span class="variable">$signo</span></span>) <span class="keyword">use</span> (<span class="params">&amp;<span class="variable">$running</span></span>) </span>&#123;</span><br><span class="line">    <span class="variable">$running</span> = <span class="literal">false</span>;</span><br><span class="line">    <span class="keyword">echo</span> <span class="string">&quot;Received SIGTERM signal\n&quot;</span>;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Install signal handler</span></span><br><span class="line">pcntl_signal(SIGTERM, <span class="variable">$signalHandler</span>);</span><br><span class="line"></span><br><span class="line"><span class="keyword">while</span> (count(<span class="variable">$channel</span>-&gt;callbacks) &amp;&amp; <span class="variable">$running</span>) &#123;</span><br><span class="line">    <span class="variable">$channel</span>-&gt;wait();</span><br><span class="line">    pcntl_signal_dispatch();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Restore signal handler to avoid unexpected interruption</span></span><br><span class="line">pcntl_signal(SIGTERM, SIG_DFL);</span><br><span class="line"></span><br><span class="line"><span class="variable">$channel</span>-&gt;close();</span><br><span class="line"><span class="variable">$connection</span>-&gt;close();</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>The callback function calls <code>pcntl_sigprocmask()</code> to disable all interrupts, or just <code>SIGTERM</code> (depends on scenes) during the critical section, and re-enable interrupts after that. This procedure avoids the possibility that a kill signal breaks the transaction.</p>
+<p>Pending signal will not be processed until <code>pcntl_signal_dispatch()</code> is called. An alternate way is to use <code>declare(ticks=1)</code> to check signal periodically.</p>
+<p>However, when there is no message handling, the consumer is in idle state waiting for a new one. If we signal the program at this time. It’s quite a great chance to receive the follow warning:</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">stream_select(): unable to select [4]: Interrupted system call (max_fd=7)</span><br></pre></td></tr></table></figure>
+
+<p>The reason is that the <code>$channel-&gt;wait()</code> call will eventually invoke the <code>select()</code> Unix function which is interruptable by the <code>SIGTERM</code>.</p>
+<p>We can let the warning slipped past of course. However, for a robust application, it’s a good practice to treat all PHP warnings as an exception (as PHP frameworks did such as Laravel and Swoole)</p>
+<p>Assume that the warning throws an <code>ErrorException</code> if the <code>stream_select</code> was interrupted. Here is the remedy:</p>
+<h2 id="Version-2"><a href="#Version-2" class="headerlink" title="Version 2"></a>Version 2</h2><figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="comment">// ...</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">while</span> (count(<span class="variable">$channel</span>-&gt;callbacks) &amp;&amp; <span class="variable">$running</span>) &#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="variable">$channel</span>-&gt;wait();</span><br><span class="line">    &#125; <span class="keyword">catch</span> (<span class="built_in">ErrorException</span> <span class="variable">$ex</span>) &#123;</span><br><span class="line">        <span class="keyword">if</span> (!preg_match(<span class="string">&#x27;~stream_select\\(\\)~i&#x27;</span>, <span class="variable">$ex</span>-&gt;getMessage())) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="variable">$ex</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    pcntl_signal_dispatch();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// ...</span></span><br></pre></td></tr></table></figure>
+
+<p>As there is no specific exception type for the <code>stream_select()</code> interruption, an unfriendly way is to check the message using regular expression.</p>
+<p>Seems great! Now go get ready for launch.</p>
+<p>Ehh, Houston, we still have a problem.</p>
+<p>A race condition is introduced right after the while condition test and before the wait invocation.</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="keyword">while</span> (count(<span class="variable">$channel</span>-&gt;callbacks) &amp;&amp; <span class="variable">$running</span>) &#123;</span><br><span class="line">    <span class="comment">// Interruption here will be hanged until next loop</span></span><br><span class="line">    <span class="variable">$channel</span>-&gt;wait();</span><br><span class="line"></span><br><span class="line">    <span class="comment">// ...</span></span><br></pre></td></tr></table></figure>
+
+<p>An Unix style solution is to use <code>pselect()</code> function:</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="keyword">while</span> (count(<span class="variable">$channel</span>-&gt;callbacks)) &#123;</span><br><span class="line"></span><br><span class="line">    pcntl_sigprocmask(SIG_BLOCK, [SIGTERM]);</span><br><span class="line">    pcntl_signal_dispatch();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (!<span class="variable">$running</span>) &#123;</span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="variable">$channel</span>-&gt;pselect_wait([SIGTERM]);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// ...</span></span><br></pre></td></tr></table></figure>
+
+<p><code>pselect()</code> is equivalent to atomically executing the following calls:</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">pthread_sigmask(SIG_SETMASK, &amp;sigmask, &amp;origmask);</span><br><span class="line">ready = select(nfds, &amp;readfds, &amp;writefds, &amp;exceptfds, timeout);</span><br><span class="line">pthread_sigmask(SIG_SETMASK, &amp;origmask, NULL);</span><br></pre></td></tr></table></figure>
+
+<p>Unfortunately, there is no <code>pselect()</code> or <code>pselect_wait()</code> in PHP, this code is infeasible. We have no way to choose but implementing an inelegant mechanism by passing <em>timeout</em> parameter to the <code>$channel-&gt;wait()</code> method.</p>
+<h2 id="Version-3"><a href="#Version-3" class="headerlink" title="Version 3"></a>Version 3</h2><figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="variable">$running</span> = <span class="literal">true</span>;</span><br><span class="line"></span><br><span class="line"><span class="variable">$connection</span> = <span class="keyword">new</span> AMQPStreamConnection(...);</span><br><span class="line"><span class="variable">$channel</span> = <span class="variable">$connection</span>-&gt;channel();</span><br><span class="line"></span><br><span class="line"><span class="variable">$callback</span> = <span class="function"><span class="keyword">function</span> (<span class="params"><span class="variable">$message</span></span>) </span>&#123;</span><br><span class="line">    pcntl_sigprocmask(SIG_BLOCK, [SIGTERM]);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Critical section entry</span></span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">    <span class="comment">// Critical section exit</span></span><br><span class="line"></span><br><span class="line">    pcntl_sigprocmask(SIG_UNBLOCK, [SIGTERM]);</span><br><span class="line">    pcntl_signal_dispatch();</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Initialization code</span></span><br><span class="line"><span class="comment">// ...</span></span><br><span class="line"><span class="variable">$channel</span>-&gt;basic_consume(..., <span class="variable">$callback</span>);</span><br><span class="line"></span><br><span class="line"><span class="variable">$signalHandler</span> = <span class="function"><span class="keyword">function</span> (<span class="params"><span class="variable">$signo</span></span>) <span class="keyword">use</span> (<span class="params">&amp;<span class="variable">$running</span></span>) </span>&#123;</span><br><span class="line">    <span class="variable">$running</span> = <span class="literal">false</span>;</span><br><span class="line">    <span class="keyword">echo</span> <span class="string">&quot;Received SIGTERM signal \n&quot;</span>;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Install signal handler</span></span><br><span class="line">pcntl_signal(SIGTERM, <span class="variable">$signalHandler</span>);</span><br><span class="line"></span><br><span class="line"><span class="keyword">while</span> (count(<span class="variable">$channel</span>-&gt;callbacks) &amp;&amp; <span class="variable">$running</span>) &#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="variable">$channel</span>-&gt;wait(<span class="literal">null</span>, <span class="literal">false</span>, <span class="number">15</span>);</span><br><span class="line">    &#125; <span class="keyword">catch</span> (<span class="built_in">ErrorException</span> <span class="variable">$ex</span>) &#123;</span><br><span class="line">        <span class="keyword">if</span> (!preg_match(<span class="string">&#x27;~stream_select\\(\\)~i&#x27;</span>, <span class="variable">$ex</span>-&gt;getMessage())) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="variable">$ex</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; <span class="keyword">catch</span> (\PhpAmqpLib\<span class="built_in">Exception</span>\AMQPTimeoutException <span class="variable">$ex</span>) &#123;</span><br><span class="line">        <span class="comment">//</span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    pcntl_signal_dispatch();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Restore signal handler to avoid unexpected interruption</span></span><br><span class="line">pcntl_signal(SIGTERM, SIG_DFL);</span><br><span class="line"></span><br><span class="line"><span class="variable">$channel</span>-&gt;close();</span><br><span class="line"><span class="variable">$connection</span>-&gt;close();</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>The <code>$channel-&gt;wait()</code> will time out periodically and throw an <code>AMQPTimeoutException</code>. We just ignore it and continue our next loop if no termination signal issued. Of course, the exception might be raised by other reasons as it’s a general timeout exception. Further inspection has to be taken if necessary.</p>
+<p>Also, if the <code>SIGTERM</code> is called just before the <code>$channel-&gt;wait()</code>, there will be an unavoidable <em>timeout</em> seconds delay before normal exit.</p>
+<h2 id="Epilogue"><a href="#Epilogue" class="headerlink" title="Epilogue"></a>Epilogue</h2><p>Well, I implemented this feature based on several references, including one project using this mechanism. Still, I don’t think this is an elegant and perfect solution. If you have any better ideas, or there are potential problems persisting, feel free to leave comments below.</p>
+<h2 id="References"><a href="#References" class="headerlink" title="References"></a>References</h2><p> <a href="https://github.com/php-amqplib/php-amqplib/issues/165">https://github.com/php-amqplib/php-amqplib/issues/165</a><br> <a href="https://linux.die.net/man/2/pselect">https://linux.die.net/man/2/pselect</a><br> <a href="https://en.wikipedia.org/wiki/Signal_(IPC)">https://en.wikipedia.org/wiki/Signal_(IPC)</a>
+ </p>
+]]></content>
+      <categories>
+        <category>Coding</category>
+      </categories>
+      <tags>
+        <tag>PHP</tag>
+        <tag>RabbitMQ</tag>
+        <tag>Concurrency</tag>
+        <tag>Linux</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>NAS打造日志--折腾篇</title>
+    <url>/nas-build-log-practical/</url>
+    <content><![CDATA[<p>本来题目是想写实践篇的，但是折腾一圈下来发现这应该叫折腾篇才对，因为实在是太太太。。。折腾了</p>
+<span id="more"></span>
+
+
+<h2 id="需求分析"><a href="#需求分析" class="headerlink" title="需求分析"></a>需求分析</h2><p>个人的要求比较简单，不需要很多人追捧的HTPC+NAS二合一，也不需要搞个什么E3 CPU，NAS就应当好好地当好它的本职工作，具体需求就是:</p>
+<ul>
+<li>File Server：基本的文件存取服务器，NAS核心功能，包括局域网访问和远程访问（云端服务器）</li>
+<li>DLNA Server：让设备端轻松看各种下载视频和音频</li>
+<li>远程下载：远程控制下载，回到家就能看视频</li>
+<li>硬盘盘位：4-6个</li>
+<li>性能与功耗：要求必须低功耗（电费），性能不需要太高</li>
+<li>体积：ITX或M-ATX均可，优先ITX</li>
+</ul>
+<p>潜在需求：</p>
+<ul>
+<li>软路由提供透明代理网络环境</li>
+</ul>
+<h2 id="硬件选型"><a href="#硬件选型" class="headerlink" title="硬件选型"></a>硬件选型</h2><p>实际开始打造之前对硬件方案进行了<a href="https://kiritox.me/archives/nas-build-hardware-solution.html">一些研究</a>，因为手头上有一些之前DIY剩下的零部件，包括机箱，电源，内存等等，因此本次实际打造只买了一块主板，总花费470元。</p>
+<p>硬件配置：</p>
+<ul>
+<li>主板+CPU：ASROCK J3160M – 470元</li>
+<li>内存：2 x 威刚DDR3 1600 4G</li>
+<li>机箱：酷冷至尊毁灭者经典U3升级版</li>
+<li>电源：酷冷至尊战斧二代400W电源</li>
+<li>硬盘：1x希捷1TB + 1x希捷250GB</li>
+</ul>
+<p>曾被AMD坑过的我现在买新CPU都是首选Intel，因此根据Intel最新发布的<a href="http://www.intel.com/content/www/us/en/processors/public-roadmap-article.html" title="Roadmap">Roadmap</a>选择了 <a href="http://ark.intel.com/products/91533/Intel-Celeron-Processor-J3160-2M-Cache-up-to-2_24-GHz">Intel Celeron J3160</a>，J3160是Intel 16’Q1新发布的一款超低功耗SoC CPU，TDP仅为6W，支持VT-x、AES等，性能一般但已经可以满足基本NAS需求，做软路由也相当不错。考虑到要低功耗的原因没有选G1840, G4400这些型号，虽然总有人说功耗也高不了多少不要迷恋低功耗之类的，但是这两个CPU idle功率要高10W左右，有负载时就更高了。而J3160有负载时功耗也仅在15W-20W之间。更何况品牌NAS也都是有用J3160，J1900，N3150这些低功耗U。</p>
+<p><img src="/nas-build-log-practical/1099110739.png" alt="Screenshot 2016-07-13 20.46.55.png"></p>
+<p>个人认为CPU选择要根据实际出发不要盲目跟风，如果没有虚拟化、HTPC、实时转码、编码、渲染。。。之类的需求高性能的CPU也是浪费。</p>
+<p>主板方面选择的是华擎的<a href="http://www.asrock.com/mb/Intel/J3160M/index.asp">J3160M</a>，M-ATX规格主板，2xSATA3接口，CPU被动散热无需风扇。选择它主要是因为手头上有多余的台式DDR3内存可以用上，而且也有不错的扩展性（3xPCI-E Slot），不过SATA接口略不足，需要加SATA扩展卡扩展。</p>
+<p><img src="/nas-build-log-practical/3779195123.jpg" alt="J3160M(L2).jpg"></p>
+<p><img src="/nas-build-log-practical/1506247690.jpg" alt="J3160M(L5).jpg"></p>
+<p>而ITX版本<a href="http://www.asrock.com/mb/Intel/J3160-ITX/index.asp">华擎J3160-ITX</a>提供4xSATA3，1xPCI-E Slot + 1x Mini-PCIE Slot，使用笔记本DDR3/DDR3L内存，如果对体积有需求直接考虑ITX板。如果想拓展SATA口可以买Mini-PCIE插槽的扩展卡，可额外提供2个SATA接口。</p>
+<p>内存8G的确是有点过剩了，如果不上虚拟化的话迟些出掉一条或者装到另一台电脑上。</p>
+<p>硬盘都是之前留下来的东西，虽然说希捷坏盘率高什么的，但两块硬盘用了这么多年都还健在，也没看到警告信息，可能是运行时间不长的原因吧(◔౪◔)（两硬盘在线时间均为3000小时左右）。不过迟些会上WD的红盘。</p>
+<p>实际测试了一下功耗，总结如下：</p>
+<table>
+<thead>
+<tr>
+<th align="center">测试条件</th>
+<th align="center">功率</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">无硬盘运行（运行PE系统测试）</td>
+<td align="center">15W</td>
+</tr>
+<tr>
+<td align="center">1T 单硬盘运行</td>
+<td align="center">25W</td>
+</tr>
+<tr>
+<td align="center">1T 单硬盘休眠</td>
+<td align="center">20W</td>
+</tr>
+<tr>
+<td align="center">1T+250G 双硬盘硬盘运行</td>
+<td align="center">35W</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="软件方案"><a href="#软件方案" class="headerlink" title="软件方案"></a>软件方案</h2><p>比较知名的免费NAS系统有：FreeNAS、NAS4Free、OpenMediaVault（详细介绍可以<a href="http://blog.brianmoses.net/2015/04/diy-nas-software-roundup.html">看这里</a>）其他系统方案还有黑群晖和Windows Server。</p>
+<blockquote>
+<p>FreeNAS、OpenMediaVault、NAS4Free关系：Olivier Cochard-Labbe在2005年创建了FreeNAS项目，后Volker Theile加入该项目作为核心开发人员；2009年12月Olivier Cochard-Labbe发表声明停止为FreeNAS 0.7版本开发新功能后，Volker Theile创建了基于Debian Linux的OpenMediaVault项目，并采用GPLv3授权；iXsystems收购FreeNAS后重写了网页框架和构架在2011年发布了全新的FreeNAS 8版本；2011年其余开发者基于FreeNAS 0.7开发了分支并重新命名为NAS4Free。<br><em>引用:<a href="http://songming.me/openmediavault-setup.html">http://songming.me/openmediavault-setup.html</a></em></p>
+</blockquote>
+<h3 id="FreeNAS、NAS4Free"><a href="#FreeNAS、NAS4Free" class="headerlink" title="FreeNAS、NAS4Free"></a>FreeNAS、NAS4Free</h3><p>这两个系统是基于FreeBSD开发，使用ZFS分区，对内存需求比较高，官方强烈推荐使用ECC内存，而且至少需要8GB，虽然这两个系统相当不错，但本次计划没有ECC内存因此只能排除这两个方案。</p>
+<p><img src="/nas-build-log-practical/2782324303.png" alt="910gui.png"></p>
+<p><img src="/nas-build-log-practical/3673292591.png" alt="NewNas4freescreenshot.png"></p>
+<h3 id="OpenMediaVault"><a href="#OpenMediaVault" class="headerlink" title="OpenMediaVault"></a>OpenMediaVault</h3><p>OpenMediaVault是基于Debian的NAS系统，简称OMV。由于是一个Linux-based的系统，可以支持Ext3, Ext4, XFS, JFS等Linux常见分区，除了OMV本身提供的插件也可以自行安装各种基于Linux应用，总的来说是十分强大的，近几年来也渐渐火起来。</p>
+<h3 id="黑群晖"><a href="#黑群晖" class="headerlink" title="黑群晖"></a>黑群晖</h3><p>黑群晖是通过破解品牌NAS<strong>群晖</strong>的系统启动引导，制作出引导文件使普通电脑都可以安装群晖系统，实际使用上基本达到与群晖一致的体验，想说一下的是有人声称群晖使用的是加密分区格式，系统一旦损坏数据就拿不出来。实际上群晖使用就是Linux的EXT4分区，不存在加密一说，使用Linux-based系统就可以把里面的内容提取出来，官方也提供了相关教程。不过黑群晖肯定是非官方授权的也是没有售后支援的，所以使用上会有一定的风险，出现问题要自己解决。</p>
+<h3 id="Windows-Server-2012-R2-Windows-10"><a href="#Windows-Server-2012-R2-Windows-10" class="headerlink" title="Windows Server 2012 R2 / Windows 10"></a>Windows Server 2012 R2 / Windows 10</h3><p>Windows Server系统的话就不用多说了，功能强大而且配置flexible，有需要可以上Hyper-V虚拟化，不过500刀的价钱不是每个人都能承受的起。Windows 10同样支持虚拟化，对于不想折腾的人来说也是个不错的选择。<em>（请支持正版）</em></p>
+<hr>
+<h2 id="折腾篇"><a href="#折腾篇" class="headerlink" title="折腾篇"></a>折腾篇</h2><h3 id="OpenMediaVault初体验"><a href="#OpenMediaVault初体验" class="headerlink" title="OpenMediaVault初体验"></a>OpenMediaVault初体验</h3><p>OMV总的来说也算是一个不错的系统，对于熟悉Linux的人来说实在是太方便，但是官方给出了这么一个需求：</p>
+<blockquote>
+<p><strong>System Drive</strong><br>The whole disc will be occupied by the System and swap space, so size doesn’t matter so much. Data storage on the system disc is not supported.<br>Spinning Harddisk, SSD, Disk-on-Module, CompactFlash or USB thumb drive type drives can be used as System Drive.<br><strong>If you use a Flash Drive, select one with static wear leveling, without it the drive will have a very short lifetime.</strong> It is also recommended to activate the Flash memory Plugin: (see Plug-ins) The entire disk is used as system disk. This disk can not be used to store user data.<br><em><a href="http://wiki.openmediavault.org/index.php?title=Prerequisites">http://wiki.openmediavault.org/index.php?title=Prerequisites</a></em></p>
+</blockquote>
+<p>大致的意思就是，如果你使用Flash储存设备做系统盘的话，要找那些静态损耗均衡（就是类似SSD Trim技术的意思）的设备，不然的话很快就会完蛋，所以一定要找长擦写寿命的。使用SSD是个比较好的选择，系统安装好后虽然会把整个硬盘占用了，但是可以自行分区腾出空间供作储存。但是手头上没有SSD硬盘空闲，电商逛了一圈现在一线大厂SSD 60G价格跟128/120G的都差不多价格，便宜的SSD又怕出问题。偶然看到有SLC U盘这么一样东西，据说寿命比普通U盘都要长，于是在淘宝找了个59包邮的SLC U盘，本来想着系统盘读写量又不是很大找个便宜点的U盘就算了（据说都是小作坊产品），而且这个是SLC储存理论上寿命也是可以的(Flag)。</p>
+<p><img src="/nas-build-log-practical/3053182115.jpg" alt="T1YWYhXj8eXXc3ZFI2_043031.jpg_430x430q90.jpg"></p>
+<p>安装完成后看到界面，看起来还是不错的，有一些插件需要安装第三方安装包，根据个人需求，安装DLNA插件和VirtualBox就差不多了。</p>
+<p><img src="/nas-build-log-practical/3802864263.png" alt="Screenshot 2016-07-10 16.31.00.png"></p>
+<p>然而当我重启到Ubuntu Live，打开GParted分区工具打算对1T硬盘重新分下区的时候，有个警告说U盘的分区信息读不出来，当时不怎么在意，分完区重启后。。。<br>无法引导？？？</p>
+<p>Round1：好吧。。可能是分区的时候损坏了（玄学？），只好重新分区重装OMV，配置好各种服务，Perfect！关机睡觉。<br>第二天再开机，突然弹了个提示说GRUB引导损坏什么的，强行重启，结果直接黑屏只有左上角一个无限闪烁的光标。。。<br>。。。<br>。。。<br>。。。</p>
+<p>Round2：嗯？噢上次弄虚拟机的时候好像动过内核，好吧这次不加那么多插件了，就开默认服务运行，应该可以了吧。<br>然后过了几天。。<br>嗯？黑屏？</p>
+<p>很好，这次U盘插到手提上直接识别不了了，U盘指示灯持续闪烁，似乎被玩坏了。。我去这还不是U盘问题？然后。。。然后火速退货了。。。</p>
+<p>特么真的是便宜没好货啊。。折腾了一个星期结果又回到原点，NAS依然无法上线。无奈下还是要继续考虑其他方案。</p>
+<p>Round3：找找手头上有个2G老U盘空闲可以当系统盘，那就安装上去试试吧，然而使用起来发现2M/s写入的速度实在太感人了，安装个插件都要10分钟，遂放弃。</p>
+<p>Round4：拿个4G Micro SD卡来试试，用那2G U盘坐安装盘，但U盘似乎不兼容Debian，安装程序找不到CR-ROM安装文件，中间重试了若干次。。。<br>好吧。。只好在虚拟机安装，这下终于好了，然而当我要安装插件的时候。。</p>
+<p><img src="/nas-build-log-practical/1391370919.png" alt="Screenshot 2016-07-09 22.11.03.png"></p>
+<p>然后就卡！死！了！</p>
+<p>心好累。。至此宣布放弃，从此不再用U盘安装。。啊不对，劳资不玩OMV了！（手动再见）</p>
+<hr>
+<p>Round5：手头没SSD始终比较麻烦，能安装到U盘的NAS系统还有FreeNAS、NAS4Free，虽然是有8G内存达到要求，但没有ECC始终是一个风险，因为ZFS文件系统极度依赖内存的可靠性（数据无价）。看看手头上剩下的选择，虽然有些无奈，但只有黑群晖可以选择了。</p>
+<h3 id="黑群晖折腾篇"><a href="#黑群晖折腾篇" class="headerlink" title="黑群晖折腾篇"></a>黑群晖折腾篇</h3><p>群晖的系统都会在每一块硬盘安装一份，而不是安装在U盘，U盘只会在开机做引导作用，至少不会那么容易被玩坏。。</p>
+<p>Round6：黑群晖安装教程可以参考这个<a href="http://www.nasyun.com/thread-24296-1-1.html">帖子</a>，不过建议黑群晖版本去官网找个新版本些的，<a href="http://xpenology.me/downloads/">XPEnology黑群晖官网下载</a>。</p>
+<p>按照教程修改引导镜像，写入U盘，第一次引导时要在启动菜单选择Install/Upgrade一项，进行群晖系统的安装。</p>
+<p>使用Synology Assistant很快就可以找到NAS的机器</p>
+<p><img src="/nas-build-log-practical/3848539345.png" alt="Untitled.png"></p>
+<p>写入系统文件<br><img src="/nas-build-log-practical/3457044370.png" alt="Screenshot 2016-07-10 19.04.52.png"></p>
+<p>安装完成，相比起OVM安装步骤(标准Linux安装程序)实在是太轻松了。</p>
+<p>界面方面看起来比其他NAS系统都要好看得多，毕竟是商业系统。<br><img src="/nas-build-log-practical/752782792.jpg" alt="Screenshot 2016-07-10 19.37.40.jpg"></p>
+<p><img src="/nas-build-log-practical/2050578598.jpg" alt="Screenshot 2016-07-10 20.21.05.jpg"></p>
+<p>安装完毕，接下来按照里面的帮助文档配置好系统就可以正常使用了，难度不会太高。</p>
+<p>因为SATA接口的硬盘在群晖系统可以使用前都要先初始化，里面的数据都要被清空，由于1T硬盘已经存有各种资料，只好把群晖系统安装在250G的硬盘上，1T的数据只能等买新硬盘才能导入进去了。不过群晖可以做到插入移动硬盘等外部设备时自动开启共享，这样把硬盘插到USB硬盘座再连接上NAS大概可以临时解决访问问题。</p>
+<p>群晖这些商业操作系统的界面相对于OMV这些开源系统都会人性化得多，除了移动硬盘即插即用即共享外还有其他一些亮点，例如在OMV里文件管理器是一个插件，而且显示方式是跟Linux结构是一样的，硬盘分区都藏在很深的目录里。</p>
+<p><img src="/nas-build-log-practical/2802675353.png" alt="Screenshot 2016-07-13 20.57.22.png"></p>
+<p>没有Linux基础的人一眼过去肯定是找不到目录的。。。</p>
+<p>群晖就内置了一个文件管理器，目录显示也是简洁明了，操作起来就像用Windows文件管理器一样。</p>
+<p><img src="/nas-build-log-practical/3091046160.jpg" alt="Screenshot 2016-07-10 21.00.45.jpg"></p>
+<p>当然优点还有很多很多，有兴趣可以虚拟机安装一个试试或者上官网体验一下。</p>
+<p>说了那么多群晖的优点也不是说完全没缺点的，例如因为系统主体是放在硬盘里的，休眠的硬盘经常会被唤醒（白群晖也应该会遇到），例如打开群晖的Web控制台，DLNA浏览目录时都会唤醒硬盘。如果Windows中共享文件夹映射驱动器后更是出现无法休眠的情况，在Web控制台中可以看到Windows访问共享目录的会话。</p>
+<p><img src="/nas-build-log-practical/1124842396.png" alt="Screenshot 2016-07-12 17.48.33.png"></p>
+<p>只有手动切断会话才可以使硬盘休眠，这个问题反而比OMV要糟糕了，因为NAS硬盘在映射驱动器后即使在不访问时也会持续运转，只有关机重启才会断开连接，不但功耗高了，长时间运行也会怕影响硬盘寿命。</p>
+<h3 id="OpenMediaVault·续"><a href="#OpenMediaVault·续" class="headerlink" title="OpenMediaVault·续"></a>OpenMediaVault·续</h3><p>Round7：没错，我反悔了，我又玩OMV了。</p>
+<p>考虑到硬盘休眠唤醒这个问题不是很理想，于是打算再好好研究一下之前的问题，因为Web界面卡死，这一次选择在SSH里面安装软件包测试，执行apt-get update的时候弹出了这个错误</p>
+<pre><code>Err http://mirrors.163.com wheezy Release.gpg 
+Something wicked happened resolving &#39;mirrors.163.com:http&#39; (-5 - No address associated with hostname)
+Err http://security.debian.org wheezy/updates Release.gpg
+Something wicked happened resolving &#39;security.debian.org:http&#39; (-5 - No address associated with hostname)
+Err http://packages.openmediavault.org stoneburner Release.gpg
+Something wicked happened resolving &#39;packages.openmediavault.org:http&#39; (-5 - No address associated with hostname)
+</code></pre>
+<p>无法解析域名。。DNS服务器挂了？但网络是正常的啊，其他电脑也能正常上网。Google了一番，终于检查到是<code>/etc/resolv.conf</code>里面的DNS地址是错误的，因为之前在虚拟机安装OMV的网卡是NAT模式，因此被设置成一个错误的DNS IP地址（虚拟网卡的网关IP，跟实际网络IP不同），立马更改回来，一切正常了，终于是明白了之前界面卡死的原因。</p>
+<p>不过在Micro SD卡装的系统，安装程序那感人的速度又让我想起用树莓派的日子了。。。还好使用时不会影响反应速度</p>
+<p>然后对比了一下两系统硬盘休眠被唤醒的情况：</p>
+<p><em>测试条件：开启SMB/CIFS共享服务和DLNA共享服务，OMV和群晖均开启硬盘休眠功能</em></p>
+<table>
+<thead>
+<tr>
+<th>使用场景</th>
+<th>OpenMediaVault</th>
+<th>群晖</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>DLNA浏览目录，不点开媒体文件</td>
+<td>休眠</td>
+<td>唤醒</td>
+</tr>
+<tr>
+<td>映射驱动器</td>
+<td>休眠</td>
+<td>唤醒</td>
+</tr>
+<tr>
+<td>映射驱动器后，硬盘休眠后后点开”计算机”图标</td>
+<td>几秒后自动唤醒</td>
+<td>映射驱动器后一直唤醒</td>
+</tr>
+<tr>
+<td>添加网络位置后，硬盘休眠后点开”计算机”图标</td>
+<td>休眠</td>
+<td>几秒后自动唤醒</td>
+</tr>
+<tr>
+<td>登陆Web管理界面</td>
+<td>休眠</td>
+<td>唤醒</td>
+</tr>
+<tr>
+<td>登陆Web管理界面，点击硬盘设置相关页面</td>
+<td>唤醒</td>
+<td>唤醒</td>
+</tr>
+<tr>
+<td>打开Windows资源管理器，Quick access一栏中有NAS的文件记录</td>
+<td>唤醒</td>
+<td>唤醒</td>
+</tr>
+</tbody></table>
+<p>到底谁好谁坏呢？这里并没有得出结论，如果硬盘经常性唤醒，频繁开关可能会影响硬盘寿命。硬盘保持唤醒有即时反应的优势，因为休眠的硬盘启动到响应操作需要一定的时间，但这样整体功耗相对又会比较高。所谓熊掌不可兼得大概也就如此吧。</p>
+<p>根据测试情况，建议<strong>尽量不要映射网络驱动器</strong>，这样可以避免出现时常唤醒硬盘的情况，而且使用映射网络驱动器时如果NAS没开机而其他电脑先开机还会有错误框弹出。当然了如果有需求的话除外，说实话这个功能还是挺好用的。</p>
+<p>一个比较好的替代方案是使用<strong>添加网络位置</strong>功能（OMV有效），这样在Windows中只会把NAS共享文件夹看成是文件夹，而不是一个驱动器，虽然损失了一些高级功能（把共享文件夹看作一个真实分区），但硬盘再也不会频繁休眠唤醒了。</p>
+<p>至此，NAS算是稳定配置好了，到头来还是用回了OMV，毕竟是Linux-based系统，耐得起折腾，使用黑裙晖还有合法性问题。不过自己DIY NAS，路上都是一个又一个坑啊，不想折腾还是买成品吧(´c_`)。</p>
+<h3 id="速度实测"><a href="#速度实测" class="headerlink" title="速度实测"></a>速度实测</h3><p>NAS最重要的一点就是要求网络环境达到千兆速度，最好先将网络环境升级到千兆有线网络（包括路由器、网线、网卡）再部署NAS，有线网络环境达标才能有比较好的访问速度。</p>
+<p>读取速度：NAS到PC</p>
+<p><img src="/nas-build-log-practical/2391837075.png" alt="read.png"></p>
+<p>写入速度：PC到NAS</p>
+<p><img src="/nas-build-log-practical/1024739463.png" alt="write.png"></p>
+<p>总体感觉还是比较满意的，读写都能达到千兆网络的瓶颈速度，CPU占用率上升到40%左右，当然这还要靠强大的希捷1T硬盘，用了这么多年都仍然保持着读写100M/s的水准，因此一直都没考虑过要加固态硬盘。</p>
+<p>WIFI环境下就变成了这个可怜的速度。。。</p>
+<p><img src="/nas-build-log-practical/2335383978.png" alt="Screenshot 2016-07-16 13.00.02.png"></p>
+<h2 id="后记"><a href="#后记" class="headerlink" title="后记"></a>后记</h2><p>根据之前的需求列表，本次打造的完成情况：</p>
+<ul>
+<li>File Server √</li>
+<li>DLNA Server √</li>
+<li>远程下载 ×</li>
+<li>软路由透明代理 ×</li>
+</ul>
+<p>远程下载Linux下的解决方案有迅雷Linux版<strong>xware</strong>，在OMV安装配置略麻烦，而且开启迅雷后所有硬盘无法休眠。由于目前没有24小时下载的需求，以后有需要再进一步研究。</p>
+<p>软路由本来是打算在Virtualbox安装Openwrt，用一只无线网卡做AP。但配置起来比有线网卡要麻烦得多，初始化配置需要有线网卡，只好待有线网卡部署到位再进行配置。</p>
+<h2 id="附录：NAS系统组合方案"><a href="#附录：NAS系统组合方案" class="headerlink" title="附录：NAS系统组合方案"></a>附录：NAS系统组合方案</h2><p>关于NAS安装系统的方案，知乎上有一个问题“<a href="https://www.zhihu.com/question/21359049">自己家里搭建NAS服务器有什么好方案</a>”推荐看一看，其中答主<strong>MarKAde</strong>的总结比较好，简单归纳为以下几种：</p>
+<ol>
+<li>NAS单系统</li>
+<li>Windows+DSM双系统，DSM作为主要存储、共享系统</li>
+<li>FreeNAS系统，通过Jail插件跑Windows虚拟机</li>
+<li>Windows+黑群晖双系统，Windows为主，黑群晖作为补充（答主推荐）</li>
+<li>Windows单系统</li>
+<li>Linux单系统</li>
+<li>ESXi或Hyper-V Server</li>
+</ol>
+<p>个人建议有ECC内存就直接上FreeNAS。在Windows中虚拟化使用黑群晖的话可以在Hyper-V中直通硬盘，这样即使不想用Windows系统时直接裸跑黑群晖的话只要找一只U盘做启动盘就可以做到无缝切换了。</p>
+]]></content>
+      <categories>
+        <category>Tech</category>
+      </categories>
+      <tags>
+        <tag>NAS</tag>
+      </tags>
+  </entry>
 </search>
