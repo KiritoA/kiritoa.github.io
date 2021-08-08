@@ -86,13 +86,6 @@
   </url>
   
   <url>
-    <loc>https://kiritox.me/google729e4e6589685a5f.html</loc>
-    
-    <lastmod>2018-03-08</lastmod>
-    
-  </url>
-  
-  <url>
     <loc>https://kiritox.me/tags/index.html</loc>
     
     <lastmod>2016-12-04</lastmod>
@@ -165,20 +158,6 @@
   </url>
   
   <url>
-    <loc>https://kiritox.me/tags/Arduino/</loc>
-    <lastmod>2021-08-08</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.6</priority>
-  </url>
-  
-  <url>
-    <loc>https://kiritox.me/tags/%E5%8D%95%E7%89%87%E6%9C%BA/</loc>
-    <lastmod>2021-08-08</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.6</priority>
-  </url>
-  
-  <url>
     <loc>https://kiritox.me/tags/NUC8i7BEH/</loc>
     <lastmod>2021-08-08</lastmod>
     <changefreq>daily</changefreq>
@@ -200,7 +179,14 @@
   </url>
   
   <url>
-    <loc>https://kiritox.me/tags/NAS/</loc>
+    <loc>https://kiritox.me/tags/Arduino/</loc>
+    <lastmod>2021-08-08</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://kiritox.me/tags/%E5%8D%95%E7%89%87%E6%9C%BA/</loc>
     <lastmod>2021-08-08</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
@@ -214,14 +200,7 @@
   </url>
   
   <url>
-    <loc>https://kiritox.me/tags/%E4%BB%A3%E7%90%86/</loc>
-    <lastmod>2021-08-08</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.6</priority>
-  </url>
-  
-  <url>
-    <loc>https://kiritox.me/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/</loc>
+    <loc>https://kiritox.me/tags/NAS/</loc>
     <lastmod>2021-08-08</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
@@ -243,6 +222,20 @@
   
   <url>
     <loc>https://kiritox.me/tags/Linux/</loc>
+    <lastmod>2021-08-08</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://kiritox.me/tags/%E4%BB%A3%E7%90%86/</loc>
+    <lastmod>2021-08-08</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://kiritox.me/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/</loc>
     <lastmod>2021-08-08</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
