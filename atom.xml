@@ -6,7 +6,7 @@
   <link href="https://kiritox.me/atom.xml" rel="self"/>
   
   <link href="https://kiritox.me/"/>
-  <updated>2021-08-08T09:13:41.376Z</updated>
+  <updated>2021-10-16T11:16:18.000Z</updated>
   <id>https://kiritox.me/</id>
   
   <author>
@@ -21,7 +21,7 @@
     <link href="https://kiritox.me/igd-passthrough-for-intel-nuc8i7beh/"/>
     <id>https://kiritox.me/igd-passthrough-for-intel-nuc8i7beh/</id>
     <published>2021-08-08T05:00:00.000Z</published>
-    <updated>2021-08-08T09:13:41.376Z</updated>
+    <updated>2021-10-16T11:16:18.000Z</updated>
     
     
     <summary type="html">&lt;h1 id=&quot;Host-Configuration&quot;&gt;&lt;a href=&quot;#Host-Configuration&quot; class=&quot;headerlink&quot; title=&quot;Host Configuration&quot;&gt;&lt;/a&gt;Host Configuration&lt;/h1&gt;&lt;p&gt;Virtualization Environment: Proxmox 7.0 (GRUB)&lt;br&gt;Hardware: Intel NUC NUC8i7BEH&lt;br&gt;BIOS: UEFI Mode&lt;/p&gt;</summary>
@@ -44,7 +44,7 @@
     <link href="https://kiritox.me/zh-CN/igd-passthrough-for-intel-nuc8i7beh/"/>
     <id>https://kiritox.me/zh-CN/igd-passthrough-for-intel-nuc8i7beh/</id>
     <published>2021-08-08T05:00:00.000Z</published>
-    <updated>2021-08-08T09:42:02.482Z</updated>
+    <updated>2021-10-16T11:16:20.000Z</updated>
     
     
     <summary type="html">&lt;h1 id=&quot;宿主机环境&quot;&gt;&lt;a href=&quot;#宿主机环境&quot; class=&quot;headerlink&quot; title=&quot;宿主机环境&quot;&gt;&lt;/a&gt;宿主机环境&lt;/h1&gt;&lt;p&gt;虚拟化环境：Proxmox 7.0&lt;br&gt;硬件：Intel NUC NUC8i7BEH&lt;br&gt;BIOS：UEFI Mode&lt;/p&gt;</summary>

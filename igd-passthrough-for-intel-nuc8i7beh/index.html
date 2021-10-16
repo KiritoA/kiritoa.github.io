@@ -30,7 +30,7 @@
 <meta property="og:description" content="Host ConfigurationVirtualization Environment: Proxmox 7.0 (GRUB)Hardware: Intel NUC NUC8i7BEHBIOS: UEFI Mode">
 <meta property="og:locale" content="en_US">
 <meta property="article:published_time" content="2021-08-08T05:00:00.000Z">
-<meta property="article:modified_time" content="2021-08-08T09:13:41.376Z">
+<meta property="article:modified_time" content="2021-10-16T11:16:18.000Z">
 <meta property="article:author" content="KiritoA">
 <meta property="article:tag" content="NUC8i7BEH">
 <meta property="article:tag" content="virtualization">
@@ -271,7 +271,8 @@
 
 <p>Copy the value <code>8086:3ea5</code>. Add this line to <code>/etc/modprobe.d/vfio.conf</code>:<br><code>options vfio-pci ids=8086:3ea5</code></p>
 <h2 id="Verification"><a href="#Verification" class="headerlink" title="Verification"></a>Verification</h2><p>Reboot. If the booting freeze at <code>Loading initial ramdisk ...</code> means IGD driver has been blacklisted.</p>
-<h1 id="Extract-IGD-ROM"><a href="#Extract-IGD-ROM" class="headerlink" title="Extract IGD ROM"></a>Extract IGD ROM</h1><p>Following the guide from this link <a target="_blank" rel="noopener" href="https://github.com/tmbeck/nuc-passthrough#requirements">https://github.com/tmbeck/nuc-passthrough</a>. Generate and copy the ROM file to <code>/usr/share/kvm</code> of the host.</p>
+<h1 id="Extract-IGD-ROM"><a href="#Extract-IGD-ROM" class="headerlink" title="Extract IGD ROM"></a>Extract IGD ROM</h1><p>TLDR: here is the <a target="_blank" rel="noopener" href="https://github.com/KiritoA/igd-passthrough/blob/main/intel-iris-655.rom">premake ROM file</a>.</p>
+<p>Following the guide from this link <a target="_blank" rel="noopener" href="https://github.com/tmbeck/nuc-passthrough#requirements">https://github.com/tmbeck/nuc-passthrough</a>. Generate and copy the ROM file to <code>/usr/share/kvm</code> of the host.</p>
 <h1 id="Configure-VM-configuration"><a href="#Configure-VM-configuration" class="headerlink" title="Configure VM configuration"></a>Configure VM configuration</h1><ul>
 <li>Set <code>Machine</code> to <code>Default (i440fx)</code>. Legacy IGD is not compatible with q35.</li>
 <li>Set <code>Display</code> to <code>none</code>. Legacy IGD requires VGA mode to be <code>none</code>.</li>

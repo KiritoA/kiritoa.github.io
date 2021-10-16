@@ -281,7 +281,8 @@
 
 <p>Copy the value <code>8086:3ea5</code>. Add this line to <code>/etc/modprobe.d/vfio.conf</code>:<br><code>options vfio-pci ids=8086:3ea5</code></p>
 <h2 id="Verification"><a href="#Verification" class="headerlink" title="Verification"></a>Verification</h2><p>Reboot. If the booting freeze at <code>Loading initial ramdisk ...</code> means IGD driver has been blacklisted.</p>
-<h1 id="Extract-IGD-ROM"><a href="#Extract-IGD-ROM" class="headerlink" title="Extract IGD ROM"></a>Extract IGD ROM</h1><p>Following the guide from this link <a href="https://github.com/tmbeck/nuc-passthrough#requirements">https://github.com/tmbeck/nuc-passthrough</a>. Generate and copy the ROM file to <code>/usr/share/kvm</code> of the host.</p>
+<h1 id="Extract-IGD-ROM"><a href="#Extract-IGD-ROM" class="headerlink" title="Extract IGD ROM"></a>Extract IGD ROM</h1><p>TLDR: here is the <a href="https://github.com/KiritoA/igd-passthrough/blob/main/intel-iris-655.rom">premake ROM file</a>.</p>
+<p>Following the guide from this link <a href="https://github.com/tmbeck/nuc-passthrough#requirements">https://github.com/tmbeck/nuc-passthrough</a>. Generate and copy the ROM file to <code>/usr/share/kvm</code> of the host.</p>
 <h1 id="Configure-VM-configuration"><a href="#Configure-VM-configuration" class="headerlink" title="Configure VM configuration"></a>Configure VM configuration</h1><ul>
 <li>Set <code>Machine</code> to <code>Default (i440fx)</code>. Legacy IGD is not compatible with q35.</li>
 <li>Set <code>Display</code> to <code>none</code>. Legacy IGD requires VGA mode to be <code>none</code>.</li>
@@ -555,7 +556,8 @@
 <h2 id="验证"><a href="#验证" class="headerlink" title="验证"></a>验证</h2><p>重启，若启动界面卡在 <code>Loading initial ramdisk ...</code> 表示核显已被屏蔽<br>执行 <code>lsmod | grep vfio</code> 得到类似输出，表示已加载成功</p>
 <figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">vfio_pci               57344  2</span><br><span class="line">vfio_virqfd            16384  1 vfio_pci</span><br><span class="line">irqbypass              16384  14 vfio_pci,kvm</span><br><span class="line">vfio_iommu_type1       36864  1</span><br><span class="line">vfio                   36864  7 vfio_iommu_type1,vfio_pci</span><br></pre></td></tr></table></figure>
 
-<h1 id="提取核显ROM"><a href="#提取核显ROM" class="headerlink" title="提取核显ROM"></a>提取核显ROM</h1><p>参照 <a href="https://github.com/tmbeck/nuc-passthrough#requirements">https://github.com/tmbeck/nuc-passthrough</a> 提取核显ROM，放置到<code>/usr/share/kvm</code> ，下文假设文件路径为 <code>/usr/share/kvm/intel-iris-655.rom</code></p>
+<h1 id="提取核显ROM"><a href="#提取核显ROM" class="headerlink" title="提取核显ROM"></a>提取核显ROM</h1><p>TLDR: <a href="https://github.com/KiritoA/igd-passthrough/blob/main/intel-iris-655.rom">已提取好的ROM文件</a></p>
+<p>参照 <a href="https://github.com/tmbeck/nuc-passthrough#requirements">https://github.com/tmbeck/nuc-passthrough</a> 提取核显ROM，放置到<code>/usr/share/kvm</code> ，下文假设文件路径为 <code>/usr/share/kvm/intel-iris-655.rom</code></p>
 <h1 id="配置虚拟机参数"><a href="#配置虚拟机参数" class="headerlink" title="配置虚拟机参数"></a>配置虚拟机参数</h1><ul>
 <li>Machine 必须设置为默认的 <code>i440fx</code> ，否则启动会提示 <code>legacy IGD assignment is not compatible with q35</code></li>
 <li>Display 必须设置为 <code>none</code> ，否则启动会提示 <code>legacy IGD assignment requires VGA mode to be &#39;none&#39;</code></li>
