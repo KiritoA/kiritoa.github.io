@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
 <meta name="theme-color" content="#222">
-<meta name="generator" content="Hexo 5.4.0">
+<meta name="generator" content="Hexo 6.3.0">
   <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
   <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
@@ -30,7 +30,7 @@
 <meta property="og:description" content="Host ConfigurationVirtualization Environment: Proxmox 7.0 (GRUB)Hardware: Intel NUC NUC8i7BEHBIOS: UEFI Mode">
 <meta property="og:locale" content="en_US">
 <meta property="article:published_time" content="2021-08-08T05:00:00.000Z">
-<meta property="article:modified_time" content="2021-10-16T11:16:18.000Z">
+<meta property="article:modified_time" content="2023-06-12T09:03:37.020Z">
 <meta property="article:author" content="KiritoA">
 <meta property="article:tag" content="NUC8i7BEH">
 <meta property="article:tag" content="virtualization">
@@ -199,7 +199,7 @@
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.png">
       <meta itemprop="name" content="KiritoA">
-      <meta itemprop="description" content="一个高端大气上档次的网站（雾">
+      <meta itemprop="description" content="Software Engineer, Tech Enthusiast">
     </span>
 
     <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
@@ -259,28 +259,28 @@
 
 <h1 id="Proxmox-Configuration"><a href="#Proxmox-Configuration" class="headerlink" title="Proxmox Configuration"></a>Proxmox Configuration</h1><h2 id="Enable-IOMMU"><a href="#Enable-IOMMU" class="headerlink" title="Enable IOMMU"></a>Enable IOMMU</h2><p>Update <code>/etc/default/grub</code>.<br>Find the line with <code>GRUB_CMDLINE_LINUX_DEFAULT</code>. Set to</p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">GRUB_CMDLINE_LINUX_DEFAULT=&quot;quiet intel_iommu=on video=efifb:off,vesafb:off&quot;</span><br></pre></td></tr></table></figure>
-<p>Then save the changes and update grub.<br><code>update-grub</code> </p>
+<p>Then save the changes and update grub by calling <code>update-grub</code> </p>
 <h2 id="Load-VFIO-module"><a href="#Load-VFIO-module" class="headerlink" title="Load VFIO module"></a>Load VFIO module</h2><p>Add the following to <code>/etc/modules</code>:</p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">vfio</span><br><span class="line">vfio_iommu_type1</span><br><span class="line">vfio_pci</span><br><span class="line">vfio_virqfd</span><br></pre></td></tr></table></figure>
 
 <h2 id="Blacklist-the-drivers"><a href="#Blacklist-the-drivers" class="headerlink" title="Blacklist the drivers"></a>Blacklist the drivers</h2><p>Add the following to <code>/etc/modprobe.d/pve-blacklist.conf</code></p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">blacklist snd_hda_intel</span><br><span class="line">blacklist snd_hda_codec_hdmi</span><br><span class="line">blacklist i915</span><br></pre></td></tr></table></figure>
 
-<h2 id="Enable-VFIO-for-IGD"><a href="#Enable-VFIO-for-IGD" class="headerlink" title="Enable VFIO for IGD"></a>Enable VFIO for IGD</h2><p>Run the following command to get device ID</p>
+<h2 id="Enable-VFIO-for-IGD"><a href="#Enable-VFIO-for-IGD" class="headerlink" title="Enable VFIO for IGD"></a>Enable VFIO for IGD</h2><p>Run the following command to get the device ID of iGPU</p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ lspci -n | grep -E &quot;0300&quot;</span><br><span class="line">00:02.0 0300: 8086:3ea5 (rev 01)</span><br></pre></td></tr></table></figure>
 
 <p>Copy the value <code>8086:3ea5</code>. Add this line to <code>/etc/modprobe.d/vfio.conf</code>:<br><code>options vfio-pci ids=8086:3ea5</code></p>
-<h2 id="Verification"><a href="#Verification" class="headerlink" title="Verification"></a>Verification</h2><p>Reboot. If the booting freeze at <code>Loading initial ramdisk ...</code> means IGD driver has been blacklisted.</p>
+<h2 id="Verification"><a href="#Verification" class="headerlink" title="Verification"></a>Verification</h2><p>Reboot. If the booting freeze at <code>Loading initial ramdisk ...</code> means the IGD driver has been blacklisted.</p>
 <h1 id="Extract-IGD-ROM"><a href="#Extract-IGD-ROM" class="headerlink" title="Extract IGD ROM"></a>Extract IGD ROM</h1><p>TLDR: here is the <a target="_blank" rel="noopener" href="https://github.com/KiritoA/igd-passthrough/blob/main/intel-iris-655.rom">premake ROM file</a>.</p>
 <p>Following the guide from this link <a target="_blank" rel="noopener" href="https://github.com/tmbeck/nuc-passthrough#requirements">https://github.com/tmbeck/nuc-passthrough</a>. Generate and copy the ROM file to <code>/usr/share/kvm</code> of the host.</p>
 <h1 id="Configure-VM-configuration"><a href="#Configure-VM-configuration" class="headerlink" title="Configure VM configuration"></a>Configure VM configuration</h1><ul>
 <li>Set <code>Machine</code> to <code>Default (i440fx)</code>. Legacy IGD is not compatible with q35.</li>
 <li>Set <code>Display</code> to <code>none</code>. Legacy IGD requires VGA mode to be <code>none</code>.</li>
 </ul>
-<h1 id="Update-VM-configuration-from-command-line"><a href="#Update-VM-configuration-from-command-line" class="headerlink" title="Update VM configuration from command line"></a>Update VM configuration from command line</h1><p>Edit <code>/etc/pve/qemu-server/&lt;vmid&gt;.conf</code>. <code>&lt;vmid&gt;</code> refer to VM ID.<br>Add this line to the end of the file:</p>
+<h1 id="Update-VM-configuration"><a href="#Update-VM-configuration" class="headerlink" title="Update VM configuration"></a>Update VM configuration</h1><p>Edit <code>/etc/pve/qemu-server/&lt;vmid&gt;.conf</code>. <code>&lt;vmid&gt;</code> refer to VM ID.<br>Add this line to the end of the file:</p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hostpci0: 0000:00:02.0,legacy-igd=1,romfile=&lt;rom-file&gt;.rom</span><br></pre></td></tr></table></figure>
 <p><code>&lt;rom-file&gt;</code> is the ROM file name copied into <code>/usr/share/kvm</code>.</p>
-<h1 id="Booting-the-VM"><a href="#Booting-the-VM" class="headerlink" title="Booting the VM"></a>Booting the VM</h1><p><strong>Make sure remote access is working properly</strong> in case of no signal output from HDMI.<br>Open Device Manager. Make sure IGD driver is working properly and no error code like 43.<br>You can also passthrough USB controller <code>0000:00:14.0</code> to use USB devices like keyboard and mouse.</p>
+<h1 id="Booting-the-VM"><a href="#Booting-the-VM" class="headerlink" title="Booting the VM"></a>Booting the VM</h1><p><strong>Make sure remote access is working properly</strong> in case of no signal output from HDMI.<br>Open Device Manager. Make sure the IGD driver is working properly and no error code like 43.<br>You can also pass through USB controller <code>0000:00:14.0</code> to use USB devices like keyboards and mouses.</p>
 <h1 id="Reference"><a href="#Reference" class="headerlink" title="Reference"></a>Reference</h1><p><a target="_blank" rel="noopener" href="https://pve.proxmox.com/wiki/Pci_passthrough">https://pve.proxmox.com/wiki/Pci_passthrough</a><br><a target="_blank" rel="noopener" href="https://github.com/tmbeck/nuc-passthrough">https://github.com/tmbeck/nuc-passthrough</a><br><a target="_blank" rel="noopener" href="https://blog.timzhong.top/2020/09/27/pve-direct-pcie/">https://blog.timzhong.top/2020/09/27/pve-direct-pcie/</a><br><a target="_blank" rel="noopener" href="https://www.10bests.com/win10-htpc-on-pve/">https://www.10bests.com/win10-htpc-on-pve/</a></p>
 
     </div>
@@ -341,7 +341,10 @@
     <a href="/zh-CN/igd-passthrough-for-intel-nuc8i7beh/" rel="prev" title="Intel NUC8i7BEH 实现核显直通">
       <i class="fa fa-chevron-left"></i> Intel NUC8i7BEH 实现核显直通
     </a></div>
-      <div class="post-nav-item"></div>
+      <div class="post-nav-item">
+    <a href="/fixing-bad-acl-permission-on-my-synology-nas/" rel="next" title="Fixing bad ACL permission on my Synology NAS">
+      Fixing bad ACL permission on my Synology NAS <i class="fa fa-chevron-right"></i>
+    </a></div>
     </div>
       </footer>
     
@@ -407,7 +410,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Host-Configuration"><span class="nav-number">1.</span> <span class="nav-text">Host Configuration</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Proxmox-Configuration"><span class="nav-number">2.</span> <span class="nav-text">Proxmox Configuration</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Enable-IOMMU"><span class="nav-number">2.1.</span> <span class="nav-text">Enable IOMMU</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Load-VFIO-module"><span class="nav-number">2.2.</span> <span class="nav-text">Load VFIO module</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Blacklist-the-drivers"><span class="nav-number">2.3.</span> <span class="nav-text">Blacklist the drivers</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Enable-VFIO-for-IGD"><span class="nav-number">2.4.</span> <span class="nav-text">Enable VFIO for IGD</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Verification"><span class="nav-number">2.5.</span> <span class="nav-text">Verification</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Extract-IGD-ROM"><span class="nav-number">3.</span> <span class="nav-text">Extract IGD ROM</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Configure-VM-configuration"><span class="nav-number">4.</span> <span class="nav-text">Configure VM configuration</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Update-VM-configuration-from-command-line"><span class="nav-number">5.</span> <span class="nav-text">Update VM configuration from command line</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Booting-the-VM"><span class="nav-number">6.</span> <span class="nav-text">Booting the VM</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Reference"><span class="nav-number">7.</span> <span class="nav-text">Reference</span></a></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Host-Configuration"><span class="nav-number">1.</span> <span class="nav-text">Host Configuration</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Proxmox-Configuration"><span class="nav-number">2.</span> <span class="nav-text">Proxmox Configuration</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Enable-IOMMU"><span class="nav-number">2.1.</span> <span class="nav-text">Enable IOMMU</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Load-VFIO-module"><span class="nav-number">2.2.</span> <span class="nav-text">Load VFIO module</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Blacklist-the-drivers"><span class="nav-number">2.3.</span> <span class="nav-text">Blacklist the drivers</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Enable-VFIO-for-IGD"><span class="nav-number">2.4.</span> <span class="nav-text">Enable VFIO for IGD</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Verification"><span class="nav-number">2.5.</span> <span class="nav-text">Verification</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Extract-IGD-ROM"><span class="nav-number">3.</span> <span class="nav-text">Extract IGD ROM</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Configure-VM-configuration"><span class="nav-number">4.</span> <span class="nav-text">Configure VM configuration</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Update-VM-configuration"><span class="nav-number">5.</span> <span class="nav-text">Update VM configuration</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Booting-the-VM"><span class="nav-number">6.</span> <span class="nav-text">Booting the VM</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Reference"><span class="nav-number">7.</span> <span class="nav-text">Reference</span></a></li></ol></div>
       </div>
       <!--/noindex-->
 
@@ -416,14 +419,14 @@
     <img class="site-author-image" itemprop="image" alt="KiritoA"
       src="/images/avatar.png">
   <p class="site-author-name" itemprop="name">KiritoA</p>
-  <div class="site-description" itemprop="description">一个高端大气上档次的网站（雾</div>
+  <div class="site-description" itemprop="description">Software Engineer, Tech Enthusiast</div>
 </div>
 <div class="site-state-wrap motion-element">
   <nav class="site-state">
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">12</span>
+          <span class="site-state-item-count">13</span>
           <span class="site-state-item-name">posts</span>
         </a>
       </div>
@@ -436,7 +439,7 @@
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">19</span>
+        <span class="site-state-item-count">20</span>
         <span class="site-state-item-name">tags</span></a>
       </div>
   </nav>
@@ -481,7 +484,7 @@
 <div class="copyright">
   
   &copy; 2016 – 
-  <span itemprop="copyrightYear">2021</span>
+  <span itemprop="copyrightYear">2023</span>
   <span class="with-love">
     <i class="fa fa-user"></i>
   </span>

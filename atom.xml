@@ -6,7 +6,7 @@
   <link href="https://kiritox.me/atom.xml" rel="self"/>
   
   <link href="https://kiritox.me/"/>
-  <updated>2021-10-16T11:16:18.000Z</updated>
+  <updated>2023-06-12T09:50:45.709Z</updated>
   <id>https://kiritox.me/</id>
   
   <author>
@@ -17,11 +17,30 @@
   <generator uri="https://hexo.io/">Hexo</generator>
   
   <entry>
+    <title>Fixing bad ACL permission on my Synology NAS</title>
+    <link href="https://kiritox.me/fixing-bad-acl-permission-on-my-synology-nas/"/>
+    <id>https://kiritox.me/fixing-bad-acl-permission-on-my-synology-nas/</id>
+    <published>2023-06-11T03:03:23.000Z</published>
+    <updated>2023-06-12T09:50:45.709Z</updated>
+    
+    
+    <summary type="html">&lt;h1 id=&quot;The-Issue&quot;&gt;&lt;a href=&quot;#The-Issue&quot; class=&quot;headerlink&quot; title=&quot;The Issue&quot;&gt;&lt;/a&gt;The Issue&lt;/h1&gt;&lt;p&gt;Yesterday, I created a new administrator account for my Synology NAS. For easier management, just like usual, I copied my SSH key into the NAS by calling the &lt;code&gt;ssh-copy-id&lt;/code&gt; command. Strangely, that didn’t work. And it kept asking me to enter my password every time I log in. This thing had never happened before.&lt;/p&gt;</summary>
+    
+    
+    
+    
+    <category term="NAS" scheme="https://kiritox.me/tags/NAS/"/>
+    
+    <category term="Synology" scheme="https://kiritox.me/tags/Synology/"/>
+    
+  </entry>
+  
+  <entry>
     <title>IGD passthrough for Intel NUC8i7BEH</title>
     <link href="https://kiritox.me/igd-passthrough-for-intel-nuc8i7beh/"/>
     <id>https://kiritox.me/igd-passthrough-for-intel-nuc8i7beh/</id>
     <published>2021-08-08T05:00:00.000Z</published>
-    <updated>2021-10-16T11:16:18.000Z</updated>
+    <updated>2023-06-12T09:03:37.020Z</updated>
     
     
     <summary type="html">&lt;h1 id=&quot;Host-Configuration&quot;&gt;&lt;a href=&quot;#Host-Configuration&quot; class=&quot;headerlink&quot; title=&quot;Host Configuration&quot;&gt;&lt;/a&gt;Host Configuration&lt;/h1&gt;&lt;p&gt;Virtualization Environment: Proxmox 7.0 (GRUB)&lt;br&gt;Hardware: Intel NUC NUC8i7BEH&lt;br&gt;BIOS: UEFI Mode&lt;/p&gt;</summary>
@@ -67,10 +86,10 @@
     <link href="https://kiritox.me/shutdown-rabbitmq-consumer-gracefully/"/>
     <id>https://kiritox.me/shutdown-rabbitmq-consumer-gracefully/</id>
     <published>2019-03-31T08:06:00.000Z</published>
-    <updated>2021-08-08T04:11:47.508Z</updated>
+    <updated>2023-06-12T09:42:35.589Z</updated>
     
     
-    <summary type="html">&lt;p&gt;Recently, I need to implement graceful shutdown feature in a message queue consumer handling a large number of transactions in production that can’t be terminated immediately by a simple kill command. Implementation was tricky, though, it’s a great chance to solid my concurrent programming foundation.&lt;/p&gt;</summary>
+    <summary type="html">&lt;p&gt;Recently, I need to implement the graceful shutdown feature in a project, where there is a message queue consumer handling a large number of transactions in production, which can’t be terminated immediately by a simple kill command. Implementation was tricky, though, it’s a great chance to solidify my concurrent programming foundation.&lt;/p&gt;</summary>
     
     
     
