@@ -172,13 +172,6 @@
   </url>
   
   <url>
-    <loc>https://kiritox.me/tags/%E7%BD%91%E7%BB%9C/</loc>
-    <lastmod>2023-06-12</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.6</priority>
-  </url>
-  
-  <url>
     <loc>https://kiritox.me/tags/NUC8i7BEH/</loc>
     <lastmod>2023-06-12</lastmod>
     <changefreq>daily</changefreq>
@@ -194,6 +187,13 @@
   
   <url>
     <loc>https://kiritox.me/tags/Proxmox/</loc>
+    <lastmod>2023-06-12</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://kiritox.me/tags/%E7%BD%91%E7%BB%9C/</loc>
     <lastmod>2023-06-12</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>

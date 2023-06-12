@@ -263,6 +263,47 @@
       </tags>
   </entry>
   <entry>
+    <title>IGD passthrough for Intel NUC8i7BEH</title>
+    <url>/igd-passthrough-for-intel-nuc8i7beh/</url>
+    <content><![CDATA[<h1 id="Host-Configuration"><a href="#Host-Configuration" class="headerlink" title="Host Configuration"></a>Host Configuration</h1><p>Virtualization Environment: Proxmox 7.0 (GRUB)<br>Hardware: Intel NUC NUC8i7BEH<br>BIOS: UEFI Mode</p>
+<span id="more"></span>
+
+<h1 id="Proxmox-Configuration"><a href="#Proxmox-Configuration" class="headerlink" title="Proxmox Configuration"></a>Proxmox Configuration</h1><h2 id="Enable-IOMMU"><a href="#Enable-IOMMU" class="headerlink" title="Enable IOMMU"></a>Enable IOMMU</h2><p>Update <code>/etc/default/grub</code>.<br>Find the line with <code>GRUB_CMDLINE_LINUX_DEFAULT</code>. Set to</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">GRUB_CMDLINE_LINUX_DEFAULT=&quot;quiet intel_iommu=on video=efifb:off,vesafb:off&quot;</span><br></pre></td></tr></table></figure>
+<p>Then save the changes and update grub by calling <code>update-grub</code> </p>
+<h2 id="Load-VFIO-module"><a href="#Load-VFIO-module" class="headerlink" title="Load VFIO module"></a>Load VFIO module</h2><p>Add the following to <code>/etc/modules</code>:</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">vfio</span><br><span class="line">vfio_iommu_type1</span><br><span class="line">vfio_pci</span><br><span class="line">vfio_virqfd</span><br></pre></td></tr></table></figure>
+
+<h2 id="Blacklist-the-drivers"><a href="#Blacklist-the-drivers" class="headerlink" title="Blacklist the drivers"></a>Blacklist the drivers</h2><p>Add the following to <code>/etc/modprobe.d/pve-blacklist.conf</code></p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">blacklist snd_hda_intel</span><br><span class="line">blacklist snd_hda_codec_hdmi</span><br><span class="line">blacklist i915</span><br></pre></td></tr></table></figure>
+
+<h2 id="Enable-VFIO-for-IGD"><a href="#Enable-VFIO-for-IGD" class="headerlink" title="Enable VFIO for IGD"></a>Enable VFIO for IGD</h2><p>Run the following command to get the device ID of iGPU</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">$ lspci -n | grep -E &quot;0300&quot;</span><br><span class="line">00:02.0 0300: 8086:3ea5 (rev 01)</span><br></pre></td></tr></table></figure>
+
+<p>Copy the value <code>8086:3ea5</code>. Add this line to <code>/etc/modprobe.d/vfio.conf</code>:<br><code>options vfio-pci ids=8086:3ea5</code></p>
+<h2 id="Verification"><a href="#Verification" class="headerlink" title="Verification"></a>Verification</h2><p>Reboot. If the booting freeze at <code>Loading initial ramdisk ...</code> means the IGD driver has been blacklisted.</p>
+<h1 id="Extract-IGD-ROM"><a href="#Extract-IGD-ROM" class="headerlink" title="Extract IGD ROM"></a>Extract IGD ROM</h1><p>TLDR: here is the <a href="https://github.com/KiritoA/igd-passthrough/blob/main/intel-iris-655.rom">premake ROM file</a>.</p>
+<p>Following the guide from this link <a href="https://github.com/tmbeck/nuc-passthrough#requirements">https://github.com/tmbeck/nuc-passthrough</a>. Generate and copy the ROM file to <code>/usr/share/kvm</code> of the host.</p>
+<h1 id="Configure-VM-configuration"><a href="#Configure-VM-configuration" class="headerlink" title="Configure VM configuration"></a>Configure VM configuration</h1><ul>
+<li>Set <code>Machine</code> to <code>Default (i440fx)</code>. Legacy IGD is not compatible with q35.</li>
+<li>Set <code>Display</code> to <code>none</code>. Legacy IGD requires VGA mode to be <code>none</code>.</li>
+</ul>
+<h1 id="Update-VM-configuration"><a href="#Update-VM-configuration" class="headerlink" title="Update VM configuration"></a>Update VM configuration</h1><p>Edit <code>/etc/pve/qemu-server/&lt;vmid&gt;.conf</code>. <code>&lt;vmid&gt;</code> refer to VM ID.<br>Add this line to the end of the file:</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">hostpci0: 0000:00:02.0,legacy-igd=1,romfile=&lt;rom-file&gt;.rom</span><br></pre></td></tr></table></figure>
+<p><code>&lt;rom-file&gt;</code> is the ROM file name copied into <code>/usr/share/kvm</code>.</p>
+<h1 id="Booting-the-VM"><a href="#Booting-the-VM" class="headerlink" title="Booting the VM"></a>Booting the VM</h1><p><strong>Make sure remote access is working properly</strong> in case of no signal output from HDMI.<br>Open Device Manager. Make sure the IGD driver is working properly and no error code like 43.<br>You can also pass through USB controller <code>0000:00:14.0</code> to use USB devices like keyboards and mouses.</p>
+<h1 id="Reference"><a href="#Reference" class="headerlink" title="Reference"></a>Reference</h1><p><a href="https://pve.proxmox.com/wiki/Pci_passthrough">https://pve.proxmox.com/wiki/Pci_passthrough</a><br><a href="https://github.com/tmbeck/nuc-passthrough">https://github.com/tmbeck/nuc-passthrough</a><br><a href="https://blog.timzhong.top/2020/09/27/pve-direct-pcie/">https://blog.timzhong.top/2020/09/27/pve-direct-pcie/</a><br><a href="https://www.10bests.com/win10-htpc-on-pve/">https://www.10bests.com/win10-htpc-on-pve/</a></p>
+]]></content>
+      <categories>
+        <category>Tech</category>
+      </categories>
+      <tags>
+        <tag>NUC8i7BEH</tag>
+        <tag>virtualization</tag>
+        <tag>Proxmox</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>电信光纤升级笔记</title>
     <url>/home-fiber-network-upgrade-log/</url>
     <content><![CDATA[<p>电信的光纤升级改造计划已经搞了好几年，虽然一直都有想升级的想法，但是之前电信一直都说线路没有覆盖到不能升级，到了最近终于说是覆盖到小区了，不过去了电信营业厅问才知道升级也要收钱的( ˘･з･)没想到去完营业厅第二天电信（不是营业厅的人）就打电话来说现在要光进铜退，可以免费升光纤，我擦。。。。还好没同意升级不然白花钱了。</p>
@@ -304,47 +345,6 @@
       </categories>
       <tags>
         <tag>网络</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>IGD passthrough for Intel NUC8i7BEH</title>
-    <url>/igd-passthrough-for-intel-nuc8i7beh/</url>
-    <content><![CDATA[<h1 id="Host-Configuration"><a href="#Host-Configuration" class="headerlink" title="Host Configuration"></a>Host Configuration</h1><p>Virtualization Environment: Proxmox 7.0 (GRUB)<br>Hardware: Intel NUC NUC8i7BEH<br>BIOS: UEFI Mode</p>
-<span id="more"></span>
-
-<h1 id="Proxmox-Configuration"><a href="#Proxmox-Configuration" class="headerlink" title="Proxmox Configuration"></a>Proxmox Configuration</h1><h2 id="Enable-IOMMU"><a href="#Enable-IOMMU" class="headerlink" title="Enable IOMMU"></a>Enable IOMMU</h2><p>Update <code>/etc/default/grub</code>.<br>Find the line with <code>GRUB_CMDLINE_LINUX_DEFAULT</code>. Set to</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">GRUB_CMDLINE_LINUX_DEFAULT=&quot;quiet intel_iommu=on video=efifb:off,vesafb:off&quot;</span><br></pre></td></tr></table></figure>
-<p>Then save the changes and update grub by calling <code>update-grub</code> </p>
-<h2 id="Load-VFIO-module"><a href="#Load-VFIO-module" class="headerlink" title="Load VFIO module"></a>Load VFIO module</h2><p>Add the following to <code>/etc/modules</code>:</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">vfio</span><br><span class="line">vfio_iommu_type1</span><br><span class="line">vfio_pci</span><br><span class="line">vfio_virqfd</span><br></pre></td></tr></table></figure>
-
-<h2 id="Blacklist-the-drivers"><a href="#Blacklist-the-drivers" class="headerlink" title="Blacklist the drivers"></a>Blacklist the drivers</h2><p>Add the following to <code>/etc/modprobe.d/pve-blacklist.conf</code></p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">blacklist snd_hda_intel</span><br><span class="line">blacklist snd_hda_codec_hdmi</span><br><span class="line">blacklist i915</span><br></pre></td></tr></table></figure>
-
-<h2 id="Enable-VFIO-for-IGD"><a href="#Enable-VFIO-for-IGD" class="headerlink" title="Enable VFIO for IGD"></a>Enable VFIO for IGD</h2><p>Run the following command to get the device ID of iGPU</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">$ lspci -n | grep -E &quot;0300&quot;</span><br><span class="line">00:02.0 0300: 8086:3ea5 (rev 01)</span><br></pre></td></tr></table></figure>
-
-<p>Copy the value <code>8086:3ea5</code>. Add this line to <code>/etc/modprobe.d/vfio.conf</code>:<br><code>options vfio-pci ids=8086:3ea5</code></p>
-<h2 id="Verification"><a href="#Verification" class="headerlink" title="Verification"></a>Verification</h2><p>Reboot. If the booting freeze at <code>Loading initial ramdisk ...</code> means the IGD driver has been blacklisted.</p>
-<h1 id="Extract-IGD-ROM"><a href="#Extract-IGD-ROM" class="headerlink" title="Extract IGD ROM"></a>Extract IGD ROM</h1><p>TLDR: here is the <a href="https://github.com/KiritoA/igd-passthrough/blob/main/intel-iris-655.rom">premake ROM file</a>.</p>
-<p>Following the guide from this link <a href="https://github.com/tmbeck/nuc-passthrough#requirements">https://github.com/tmbeck/nuc-passthrough</a>. Generate and copy the ROM file to <code>/usr/share/kvm</code> of the host.</p>
-<h1 id="Configure-VM-configuration"><a href="#Configure-VM-configuration" class="headerlink" title="Configure VM configuration"></a>Configure VM configuration</h1><ul>
-<li>Set <code>Machine</code> to <code>Default (i440fx)</code>. Legacy IGD is not compatible with q35.</li>
-<li>Set <code>Display</code> to <code>none</code>. Legacy IGD requires VGA mode to be <code>none</code>.</li>
-</ul>
-<h1 id="Update-VM-configuration"><a href="#Update-VM-configuration" class="headerlink" title="Update VM configuration"></a>Update VM configuration</h1><p>Edit <code>/etc/pve/qemu-server/&lt;vmid&gt;.conf</code>. <code>&lt;vmid&gt;</code> refer to VM ID.<br>Add this line to the end of the file:</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">hostpci0: 0000:00:02.0,legacy-igd=1,romfile=&lt;rom-file&gt;.rom</span><br></pre></td></tr></table></figure>
-<p><code>&lt;rom-file&gt;</code> is the ROM file name copied into <code>/usr/share/kvm</code>.</p>
-<h1 id="Booting-the-VM"><a href="#Booting-the-VM" class="headerlink" title="Booting the VM"></a>Booting the VM</h1><p><strong>Make sure remote access is working properly</strong> in case of no signal output from HDMI.<br>Open Device Manager. Make sure the IGD driver is working properly and no error code like 43.<br>You can also pass through USB controller <code>0000:00:14.0</code> to use USB devices like keyboards and mouses.</p>
-<h1 id="Reference"><a href="#Reference" class="headerlink" title="Reference"></a>Reference</h1><p><a href="https://pve.proxmox.com/wiki/Pci_passthrough">https://pve.proxmox.com/wiki/Pci_passthrough</a><br><a href="https://github.com/tmbeck/nuc-passthrough">https://github.com/tmbeck/nuc-passthrough</a><br><a href="https://blog.timzhong.top/2020/09/27/pve-direct-pcie/">https://blog.timzhong.top/2020/09/27/pve-direct-pcie/</a><br><a href="https://www.10bests.com/win10-htpc-on-pve/">https://www.10bests.com/win10-htpc-on-pve/</a></p>
-]]></content>
-      <categories>
-        <category>Tech</category>
-      </categories>
-      <tags>
-        <tag>NUC8i7BEH</tag>
-        <tag>virtualization</tag>
-        <tag>Proxmox</tag>
       </tags>
   </entry>
   <entry>
@@ -500,6 +500,32 @@
       </categories>
       <tags>
         <tag>NAS</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>为Windows apps应用设置本地代理</title>
+    <url>/setup-proxy-for-windows-apps/</url>
+    <content><![CDATA[<p>由于众所周知的原因，Wikipedia，Twitter，Facebook这些网站需要设置代理才可以正常访问。正常情况下，电脑安装了代理工具在浏览器或者普通程序中访问是没有问题的，但在Windows 8&#x2F;8.1&#x2F;10的商店程序（Windows apps）即使设置了代理也会出现无法连接的情况。<br><img src="/setup-proxy-for-windows-apps/1715843754.png"></p>
+<span id="more"></span>
+
+
+
+<h2 id="原因分析"><a href="#原因分析" class="headerlink" title="原因分析"></a>原因分析</h2><p>经过研究，原因跟Windows apps的运行机制有关系。默认情况下，所有Windows apps均运行在被称为”AppContainers”的独立进程上，默认情况下AppContainers会阻止网络流量发送到本地，因此Windows apps无法连接到本地代理服务器。而这个问题同样也影响了一些开发者使用Fiddler抓包工具本地分析和调试程序。</p>
+<p>在<a href="https://blogs.msdn.microsoft.com/fiddler/2011/12/10/revisiting-fiddler-and-win8-immersive-applications/">这篇博客</a>中作者介绍了使用新版Fiddler的工具或者下载独立的 EnableLoopback Utility 为特定程序设置启用Loopback通信功能（Exempt，豁免），我们也可以通过这个办法使被墙的apps连接本地代理服务器使代理生效。</p>
+<h2 id="具体步骤"><a href="#具体步骤" class="headerlink" title="具体步骤"></a>具体步骤</h2><p><em>感谢 <strong>Daniel</strong> 的提醒，Fiddler移动了程序的下载位置，已更新下载链接。</em><br>下载<a href="https://telerik-fiddler.s3.amazonaws.com/fiddler/addons/enableloopbackutility.exe">EnableLoopback Utility</a>工具并安装。</p>
+<p>如果想看到更详细的信息或者设置可以使用<a href="https://loopback.codeplex.com/">Windows Loopback Exemption Manager</a>，操作方法大同小异。使用Windows Loopback Exemption Manager可以看到Edge浏览器默认开启了这个功能，所以Edge才可以正常使用代理或者访问本地主机。</p>
+<p>安装好EnableLoopback Utility后程序自动打开，或者在开始菜单找到”Enable AppContainer Loopback”打开，根据需要点击要开启Loopback的程序，或者直接点”Exempt All”设置所有程序开启，最后点<strong>Save Changes</strong>即可，之后可以点 Refresh 刷新查看当前设置或者关闭程序。<br><img src="/setup-proxy-for-windows-apps/2178465291.png"></p>
+<p>此时再打开Wikipedia，已经可以正常访问。<br><img src="/setup-proxy-for-windows-apps/1374248038.jpg"></p>
+<p>该方法适用于大部分Windows apps程序，邮件程序亦可以正常连接Gmail邮箱，但仍然有部分应用不支持，如Facebook即使开启了Loopback仍然会出现连接超时的问题。</p>
+<hr>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p><a href="https://blogs.msdn.microsoft.com/fiddler/2011/12/10/revisiting-fiddler-and-win8-immersive-applications/">https://blogs.msdn.microsoft.com/fiddler/2011/12/10/revisiting-fiddler-and-win8-immersive-applications/</a><br><a href="https://my.oschina.net/farces/blog/616110">https://my.oschina.net/farces/blog/616110</a><br><a href="https://loopback.codeplex.com/">https://loopback.codeplex.com/</a></p>
+]]></content>
+      <categories>
+        <category>Tech</category>
+      </categories>
+      <tags>
+        <tag>Windows</tag>
+        <tag>代理</tag>
       </tags>
   </entry>
   <entry>
@@ -712,32 +738,6 @@ Something wicked happened resolving &#39;packages.openmediavault.org:http&#39; (
       </categories>
       <tags>
         <tag>NAS</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>为Windows apps应用设置本地代理</title>
-    <url>/setup-proxy-for-windows-apps/</url>
-    <content><![CDATA[<p>由于众所周知的原因，Wikipedia，Twitter，Facebook这些网站需要设置代理才可以正常访问。正常情况下，电脑安装了代理工具在浏览器或者普通程序中访问是没有问题的，但在Windows 8&#x2F;8.1&#x2F;10的商店程序（Windows apps）即使设置了代理也会出现无法连接的情况。<br><img src="/setup-proxy-for-windows-apps/1715843754.png"></p>
-<span id="more"></span>
-
-
-
-<h2 id="原因分析"><a href="#原因分析" class="headerlink" title="原因分析"></a>原因分析</h2><p>经过研究，原因跟Windows apps的运行机制有关系。默认情况下，所有Windows apps均运行在被称为”AppContainers”的独立进程上，默认情况下AppContainers会阻止网络流量发送到本地，因此Windows apps无法连接到本地代理服务器。而这个问题同样也影响了一些开发者使用Fiddler抓包工具本地分析和调试程序。</p>
-<p>在<a href="https://blogs.msdn.microsoft.com/fiddler/2011/12/10/revisiting-fiddler-and-win8-immersive-applications/">这篇博客</a>中作者介绍了使用新版Fiddler的工具或者下载独立的 EnableLoopback Utility 为特定程序设置启用Loopback通信功能（Exempt，豁免），我们也可以通过这个办法使被墙的apps连接本地代理服务器使代理生效。</p>
-<h2 id="具体步骤"><a href="#具体步骤" class="headerlink" title="具体步骤"></a>具体步骤</h2><p><em>感谢 <strong>Daniel</strong> 的提醒，Fiddler移动了程序的下载位置，已更新下载链接。</em><br>下载<a href="https://telerik-fiddler.s3.amazonaws.com/fiddler/addons/enableloopbackutility.exe">EnableLoopback Utility</a>工具并安装。</p>
-<p>如果想看到更详细的信息或者设置可以使用<a href="https://loopback.codeplex.com/">Windows Loopback Exemption Manager</a>，操作方法大同小异。使用Windows Loopback Exemption Manager可以看到Edge浏览器默认开启了这个功能，所以Edge才可以正常使用代理或者访问本地主机。</p>
-<p>安装好EnableLoopback Utility后程序自动打开，或者在开始菜单找到”Enable AppContainer Loopback”打开，根据需要点击要开启Loopback的程序，或者直接点”Exempt All”设置所有程序开启，最后点<strong>Save Changes</strong>即可，之后可以点 Refresh 刷新查看当前设置或者关闭程序。<br><img src="/setup-proxy-for-windows-apps/2178465291.png"></p>
-<p>此时再打开Wikipedia，已经可以正常访问。<br><img src="/setup-proxy-for-windows-apps/1374248038.jpg"></p>
-<p>该方法适用于大部分Windows apps程序，邮件程序亦可以正常连接Gmail邮箱，但仍然有部分应用不支持，如Facebook即使开启了Loopback仍然会出现连接超时的问题。</p>
-<hr>
-<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p><a href="https://blogs.msdn.microsoft.com/fiddler/2011/12/10/revisiting-fiddler-and-win8-immersive-applications/">https://blogs.msdn.microsoft.com/fiddler/2011/12/10/revisiting-fiddler-and-win8-immersive-applications/</a><br><a href="https://my.oschina.net/farces/blog/616110">https://my.oschina.net/farces/blog/616110</a><br><a href="https://loopback.codeplex.com/">https://loopback.codeplex.com/</a></p>
-]]></content>
-      <categories>
-        <category>Tech</category>
-      </categories>
-      <tags>
-        <tag>Windows</tag>
-        <tag>代理</tag>
       </tags>
   </entry>
   <entry>
