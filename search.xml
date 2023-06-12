@@ -3,7 +3,7 @@
   <entry>
     <title>进击的巨人第一季TV/BD差异比较（13话、21话）</title>
     <url>/attack-on-titan-tv-bd-comparison/</url>
-    <content><![CDATA[<p>其实在搭好博客初期就计划要写这篇TV/BD比较的，结果因为拖延症发作balabala之类的原因一直没动过笔，然而现在第二季都说要来了才想起这篇东西还没写。。。</p>
+    <content><![CDATA[<p>其实在搭好博客初期就计划要写这篇TV&#x2F;BD比较的，结果因为拖延症发作balabala之类的原因一直没动过笔，然而现在第二季都说要来了才想起这篇东西还没写。。。</p>
 <p>咳咳，言归正传，首先是强烈建议在观看进击的巨人第二季前重温一次第一季<strong>BD版</strong>，在重新熟悉剧情的同时说不定能发现新惊喜，尤其是13话。当初想写这篇文章的原因是BD版本就如之前网友所说的对画面作出了很多修正，使得BD版本与TV版本产生了不小的差异，可以说经到了让人惊讶的地步。</p>
 <span id="more"></span>
 
@@ -103,7 +103,7 @@
 <p><img src="/attack-on-titan-tv-bd-comparison/4147046050.jpg" alt="21.Still033.jpg"></p>
 <p>此处TV是静态画面，BD是动态画面。<br><img src="/attack-on-titan-tv-bd-comparison/3611886019.jpg" alt="21.Still034-TV为静帧画面.jpg"></p>
 <hr>
-<p>以上大概就是我能看出来的这两话TV/BD版本的区别了，特意挑这两话是因为我第一次看这两话BD版本就发现出了其中的差异。当然我相信其他话肯定也有很多诸如此类的修正，我就不一一挖掘了，考据党可以继续深入探究，或者做个吃瓜群众好好再看一次BD版第一季吧。</p>
+<p>以上大概就是我能看出来的这两话TV&#x2F;BD版本的区别了，特意挑这两话是因为我第一次看这两话BD版本就发现出了其中的差异。当然我相信其他话肯定也有很多诸如此类的修正，我就不一一挖掘了，考据党可以继续深入探究，或者做个吃瓜群众好好再看一次BD版第一季吧。</p>
 <p>同时也希望进击的巨人第二季不会再出现太多的制作问题了，还是说出导演未剪辑修正BD版也是一个卖点？（滑稽）</p>
 ]]></content>
       <categories>
@@ -152,6 +152,51 @@
       </tags>
   </entry>
   <entry>
+    <title>Fixing bad ACL permission on my Synology NAS</title>
+    <url>/fixing-bad-acl-permission-on-my-synology-nas/</url>
+    <content><![CDATA[<h1 id="The-Issue"><a href="#The-Issue" class="headerlink" title="The Issue"></a>The Issue</h1><p>Yesterday, I created a new administrator account for my Synology NAS. For easier management, just like usual, I copied my SSH key into the NAS by calling the <code>ssh-copy-id</code> command. Strangely, that didn’t work. And it kept asking me to enter my password every time I log in. This thing had never happened before.</p>
+<span id="more"></span>
+
+<h1 id="The-Diagnosis"><a href="#The-Diagnosis" class="headerlink" title="The Diagnosis"></a>The Diagnosis</h1><p>Thankfully, I had another backup Synology NAS, which could be the control group for diagnosing. I tried to create a new administrator account on that machine and verified that this problem only happened to my current NAS.</p>
+<p>I enabled the SSH verbose mode <code>ssh -v</code> to connect both of my machines and compare their output. I immediately noticed the difference.</p>
+<p>Problem NAS</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">debug1: Next authentication method: publickey</span><br><span class="line">debug1: Trying private key: /Users/user1/.ssh/id_rsa</span><br><span class="line">debug1: Trying private key: /Users/user1/.ssh/id_ecdsa</span><br><span class="line">debug1: Trying private key: /Users/user1/.ssh/id_ecdsa_sk</span><br><span class="line">debug1: Offering public key: /Users/user1/.ssh/id_ed25519 ED25519</span><br><span class="line">debug1: Authentications that can continue: publickey,password</span><br><span class="line">debug1: Trying private key: /Users/user1/.ssh/id_ed25519_sk</span><br><span class="line">debug1: Trying private key: /Users/user1/.ssh/id_xmss</span><br><span class="line">debug1: Trying private key: /Users/user1/.ssh/id_dsa</span><br><span class="line">debug1: Next authentication method: password</span><br><span class="line">user1@192.168.30.5&#x27;s password: </span><br></pre></td></tr></table></figure>
+
+<p>Healthy NAS</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">debug1: Next authentication method: publickey</span><br><span class="line">debug1: Trying private key: /Users/user2/.ssh/id_rsa</span><br><span class="line">debug1: Trying private key: /Users/user2/.ssh/id_ecdsa</span><br><span class="line">debug1: Trying private key: /Users/user2/.ssh/id_ecdsa_sk</span><br><span class="line">debug1: Offering public key: /Users/user2/.ssh/id_ed25519 ED25519</span><br><span class="line">debug1: Server accepts key: /Users/user2/.ssh/id_ed25519 ED25519</span><br><span class="line">Authenticated to 192.168.30.7 ([192.168.30.7]:22) using &quot;publickey&quot;.</span><br></pre></td></tr></table></figure>
+
+<p>Looks like the server didn’t accept my SSH key. But that should never happen as I double-checked the <code>authorized_key</code> file on both of my NAS, as well as the file permissions and owner, which were identical.</p>
+<p>I would like to check the server log as well. So I started an SSH debug server by calling <code>sudo /bin/sshd -d -p 2222</code> to try to get the server log. At that time, I finally located the cause of this problem.</p>
+<p>Problem NAS</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">debug1: temporarily_use_uid: 1034/100 (e=0/0)</span><br><span class="line">debug1: trying public key file /var/services/homes/user1/.ssh/authorized_keys</span><br><span class="line">debug1: fd 4 clearing O_NONBLOCK</span><br><span class="line">Authentication refused: bad ACL permission for file /volume1/homes/user1/.ssh/authorized_keys</span><br></pre></td></tr></table></figure>
+
+<p>Healthy NAS</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">debug1: temporarily_use_uid: 1026/100 (e=0/0)</span><br><span class="line">debug1: trying public key file /var/services/homes/user2/.ssh/authorized_keys</span><br><span class="line">debug1: fd 4 clearing O_NONBLOCK</span><br><span class="line">debug1: /var/services/homes/user2/.ssh/authorized_keys:1: matching key found: ED25519</span><br><span class="line">debug1: /var/services/homes/user2/.ssh/authorized_keys:1: key options: agent-forwarding port-forwarding pty user-rc x11-forwarding</span><br><span class="line">Accepted key ED25519 found at /var/services/homes/user2/.ssh/authorized_keys:1</span><br></pre></td></tr></table></figure>
+
+<p>So there were some problems with the ACL permissions. I did check my file permissions on the NAS web GUI, it seems normal and flawless.</p>
+<p>During the research, I came across this article <a href="https://community.synology.com/enu/forum/17/post/111114">https://community.synology.com/enu/forum/17/post/111114</a>, realizing that deleting an account could cause this issue. I did remove an unused admin user right before then. So I tried to call <code>ls -el</code> through SSH to check my file permissions. Finally, The reason was clear. There was an unknown user!</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">user1@Problem-NAS:~/.ssh$ ls -el</span><br><span class="line">total 4</span><br><span class="line">-rwxrwxrwx+ 1 user1 users 107 Jun 10 21:32 authorized_keys</span><br><span class="line">	 [0] user:user1:allow:rwxpdDaARWcCo:---- (level: 2)</span><br><span class="line">	 [1] group:administrators:allow:rwxpdDaARWc--:---- (level: 3)</span><br><span class="line">	 [2] user:(null):allow:rwxpdDaARWc--:---- (level: 3)</span><br><span class="line">	 [3] everyone::allow:--x----------:---- (level: 3)</span><br><span class="line">	 [4] user:user1:allow:rwxpdDaARWcCo:---- (level: 3)</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">user@Healthy-NAS:~/.ssh$ ls -el</span><br><span class="line">total 4</span><br><span class="line">-rwxrwxrwx+ 1 user2 users 107 Jun  2 16:19 authorized_keys</span><br><span class="line">	 [0] user:user2:allow:rwxpdDaARWcCo:---- (level: 2)</span><br><span class="line">	 [1] group:administrators:allow:rwxpdDaARWc--:---- (level: 3)</span><br><span class="line">	 [2] user:user2:allow:rwxpdDaARWcCo:---- (level: 3)</span><br><span class="line">	 [3] everyone::allow:--x----------:---- (level: 3)</span><br></pre></td></tr></table></figure>
+
+<p>Somehow this unknown user didn’t show up on the GUI. I can only confirm it through SSH. That’s why I didn’t notice it in the first place.</p>
+<h1 id="The-Solution"><a href="#The-Solution" class="headerlink" title="The Solution"></a>The Solution</h1><p>Coming from the instinct of a Software Engineer, I believe I can fix this by resetting the permissions list. I don’t want to do that through SSH. Instead, I do that on the Synology Web UI.</p>
+<ol>
+<li>Go to the File Station. Right-click the <code>homes</code> shared folder. Select <code>Properties</code>.</li>
+<li>Go to the Permission tab and click <code>Create</code>. Arbitrary choose a user and assign permissions. (e.g. I assigned <code>Traverse folders/Execute files permission</code> for user <code>Everyone</code>)</li>
+<li>Click <code>Done</code> to save and exit the <code>Permission Editor</code> window and click <code>Save</code> to exit the <code>Properties</code> Window.</li>
+<li>Enter the <code>Properties</code> window again. Delete the newly created permission and save.</li>
+</ol>
+<p>Updating the permission list on the root shared folder will apply to all the containing files, as permissions are inherited by default.</p>
+<p>For me, I have to repeat these steps on most of my shared folders as I also found the unknown user in other locations. I guess I messed up the ACL permissions sometime in the past.</p>
+<h1 id="Reference"><a href="#Reference" class="headerlink" title="Reference"></a>Reference</h1><p><a href="https://community.synology.com/enu/forum/17/post/111114">https://community.synology.com/enu/forum/17/post/111114</a><br><a href="https://kb.synology.com/en-uk/DSM/help/FileStation/privilege?version=7">https://kb.synology.com/en-uk/DSM/help/FileStation/privilege?version=7</a><br><a href="https://community.synology.com/enu/forum/17/post/101650nu/forum/17/post/101650">https://community.synology.com/enu/forum/17/post/101650nu/forum/17/post/101650</a></p>
+]]></content>
+      <tags>
+        <tag>Synology</tag>
+        <tag>NAS</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>WNDR3700v4刷回原厂固件</title>
     <url>/flash-wndr3700v4-to-stock-firmware/</url>
     <content><![CDATA[<p>之前刷 Openwrt 的时候已经有人反映过说再也刷不回原厂固件，不过我是不太相信的，因为路由器本身有救砖模式。不过真正刷的时候还是折腾了好一阵子，但肯定是没问题的。这里结合网上的帖子和自己的研究分析了一下原因并列出解决步骤，本文适用于刷了 OpenWrt 或者 DD-WRT 的 NETGEAR WNDR3700v4 路由器，直接 TFTP 方式刷回原厂固件失败的情况。此方法也适用于 WNDR4300，自行查找对应的固件刷入即可。</p>
@@ -159,7 +204,7 @@
 
 <h2 id="原因分析"><a href="#原因分析" class="headerlink" title="原因分析"></a>原因分析</h2><p>本人之前使用的是<strong>openwrt 15.01</strong>版本，TFTP 刷回原厂固件表现为路由器 Power 指示灯一直是橙色，似乎还不断地自动重启，因此常规的救砖方式无效。先上结论，刷回原版固件出问题基本都是因为刷入第三方固件时<strong>破坏了路由器里面 Flash 的分区</strong>。</p>
 <p>WNDR3700v4 里面的 Flash 也有空间是用来存放设置，uboot 等内容，各自存放在不同的分区，而 firmware 部分才是真正的存放 Openwrt 系统的地方，Openwrt 里面看到的可用空间也是这部分的内容。而刷入的 img 文件（平时说的固件）其实也包括了整个 Flash 的分区信息。</p>
-<p>根据 Openwrt 官网 WNDR4300 Flash 布局的<a href="https://wiki.openwrt.org/zh-cn/toh/netgear/wndr4300">说明</a>，WNDR3700v4/WNDR4300（两款型号硬件基本一致，也都使用 NAND Flash）原版固件的 Flash 布局（为方便理解统一称为分区）是这样的：</p>
+<p>根据 Openwrt 官网 WNDR4300 Flash 布局的<a href="https://wiki.openwrt.org/zh-cn/toh/netgear/wndr4300">说明</a>，WNDR3700v4&#x2F;WNDR4300（两款型号硬件基本一致，也都使用 NAND Flash）原版固件的 Flash 布局（为方便理解统一称为分区）是这样的：</p>
 <p><img src="/flash-wndr3700v4-to-stock-firmware/3394940427.png" alt="Screenshot 2016-12-03 09.35.17.png"></p>
 <p>Openwrt 官方固件是这样的</p>
 <p><img src="/flash-wndr3700v4-to-stock-firmware/344266447.png" alt="Screenshot 2016-12-03 09.35.23.png"></p>
@@ -180,7 +225,7 @@
 </li>
 <li><p>在 DD-WRT 下载 WNDR3700v4 最新固件<a href="http://www.dd-wrt.com/wiki/index.php/Netgear_WNDR3700#v4">ftp://ftp.dd-wrt.com/betas/2014/02-04-2014-r23503/netgear-wndr3700v4/wndr3700v4-factory.img</a>。</p>
 </li>
-<li><p>下载最新版固件，可选择中国/俄罗斯版(PRRU)固件或者国际版固件，PRRU 固件增加了 IPTV，IP-MAC，脱机下载等国际版没有的功能，而国际版则版本较新，修复改进的项目比较多，各位可以自行斟酌选哪个版本。</p>
+<li><p>下载最新版固件，可选择中国&#x2F;俄罗斯版(PRRU)固件或者国际版固件，PRRU 固件增加了 IPTV，IP-MAC，脱机下载等国际版没有的功能，而国际版则版本较新，修复改进的项目比较多，各位可以自行斟酌选哪个版本。</p>
 </li>
 </ol>
 <p><strong>Firmware Version 1.0.2.80 (All Regions Except China &amp; Russia)</strong><br><a href="http://www.downloads.netgear.com/files/GDC/WNDR3700V4/WNDR3700v4-V1.0.2.80.zip">http://www.downloads.netgear.com/files/GDC/WNDR3700V4/WNDR3700v4-V1.0.2.80.zip</a></p>
@@ -249,7 +294,7 @@
 <p>主路由使用 NETGEAR WNDR3700v4，刷了 openwrt 当作翻墙网关,有兴趣的可以参考<a href="https://cokebar.info/archives/978">教程</a>，不过现在最主要的作用是为 PS4 提供透明代理环境，保证联机质量，以及无污染 DNS 环境。但此方案实际上遇到了很麻烦的问题：主路由偶尔因为 DNS 解析出现问题导致全屋网络异常，表现为网页无法解析，主要原因是上游境外 DNS 服务器连接超时引起（公共 DNS 或 shadowsocks 服务器连接超时会出现此问题），常常需要人工维护。</p>
 <p>按照现有环境和需要，改成以下网络拓扑：</p>
 <p><img src="/home-fiber-network-upgrade-log/867703132.png" alt="改良拓扑.png"></p>
-<p>主路由取消作为翻墙网关的作用，书房添加千兆交换机提供有线接口连接，再安装一个路由器负责透明代理，连接上去的所有设备均处于无墙环境，既满足翻墙需要，也避免了因为翻墙问题影响到主路由。偶然间发现一个 GL-iNet 迷你路由器很适合当翻墙网关，99 元的价位比较合理，还可以很方便的随身携带到处愉快地翻墙(´ΘωΘ`)</p>
+<p>主路由取消作为翻墙网关的作用，书房添加千兆交换机提供有线接口连接，再安装一个路由器负责透明代理，连接上去的所有设备均处于无墙环境，既满足翻墙需要，也避免了因为翻墙问题影响到主路由。偶然间发现一个 GL-iNet 迷你路由器很适合当翻墙网关，99 元的价位比较合理，还可以很方便的随身携带到处愉快地翻墙(´ΘωΘ&#96;)</p>
 <p><img src="/home-fiber-network-upgrade-log/3622431413.jpg" alt="TB1PGnyJpXXXXbkXFXXXXXXXXXX_!!0-item_pic.jpg"></p>
 <h2 id="未来"><a href="#未来" class="headerlink" title="未来"></a>未来</h2><p>未来打算进一步优化网络，将电力猫线路重新换成网线，以钉墙方式安装网线，这样使主路由到书房网速可以达到千兆。电力猫保留安装以保证无线覆盖率。</p>
 <p><img src="/home-fiber-network-upgrade-log/3364060589.png" alt="理想拓扑.png"></p>
@@ -322,13 +367,13 @@
 <blockquote>
 <p>Arduino是一个开发各类设备，让你比台式电脑更能充分感知和控制物理世界的生态系统。Arduino是一个基于一系列单片机电路板的开源物理计算平台，一个编写用于Arduino和Genuino开发板的软件开发环境和一个拥有活跃开发者和用户社区。<br>Arduino可用于开发交互式物体，接受来自各类开关或传感器的输入，并能控制各种灯光、马达和其他物理输出装置。Arduino项目可以单独运行，也可以与您计算机上运行的软件（Processing、MaxMSP）配合使用。您可以手动组装简单的开发板，或购买预装的整套开发板， 还可以免费下载开源Arduino软件(IDE)。<br>Arduino编程所用编程语言是以Processing多媒体编程环境为基础的物理计算平台Wiring。通过多年的努力，Arduino软件（IDE）已经演变成能支持由英特尔和三星等公司制造的众多核心板和开发板。</p>
 </blockquote>
-<p>官方的介绍不明觉厉，简单地说，就是一个开发平台，使用C/C++编写代码，普通人都能轻松上手，制作出想要的东西。简单的可以做个自动或者手动遥控小车。</p>
+<p>官方的介绍不明觉厉，简单地说，就是一个开发平台，使用C&#x2F;C++编写代码，普通人都能轻松上手，制作出想要的东西。简单的可以做个自动或者手动遥控小车。</p>
 <p><img src="/learn-arduino-rather-than-mcu/1351620264.jpg" alt="mini-dfrobotshop-rover-kit-arduino-uno-large.jpg"></p>
 <p><em>图片引用：<a href="http://www.robotshop.com/">www.robotshop.com</a></em></p>
 <p>复杂的或者做个目前比较火的3D打印机</p>
 <p><img src="/learn-arduino-rather-than-mcu/451981649.jpeg" alt="2000550803.jpeg"></p>
 <p><em>图片引用：ic.tweakimg.net</em></p>
-<p>当然最好的，还是把你脑海中的创意付诸于实现。<br>简而言之，你想做东西又不想学习单片机什么的，Arduino就是快速实现创意的最佳平台，但写代码是逃不掉的了(`・ω・´)</p>
+<p>当然最好的，还是把你脑海中的创意付诸于实现。<br>简而言之，你想做东西又不想学习单片机什么的，Arduino就是快速实现创意的最佳平台，但写代码是逃不掉的了(&#96;・ω・´)</p>
 <h2 id="Why-Arduino"><a href="#Why-Arduino" class="headerlink" title="Why Arduino"></a>Why Arduino</h2><p>明明有一个最快最简便的实现方法摆在面前，虽然我一直都知道这东西，却没想过它的意义何在。我们常常从51开始学单片机，然而</p>
 <ul>
 <li>当我们在学单片机架构，CPU，ROM，RAM，寄存器等各种理论的时候，用Arduino的人在准备开发环境。</li>
@@ -346,9 +391,9 @@
 <ul>
 <li>学习Arduino之前首先要学习C语言，此乃基本功。</li>
 <li>操作一些官方没有例子的器件（芯片）的时候，还是需要看芯片手册或者一些教程。</li>
-<li>当需要更深入了解底层/电子知识时，就需要进一步的学习了。</li>
+<li>当需要更深入了解底层&#x2F;电子知识时，就需要进一步的学习了。</li>
 </ul>
-<p>总而言之，Arduino就是创作/电子制作启蒙工具，实质还是电子积木的形式，但这的确是快速实现一些idea最理想最便捷的平台。不过未来要把做出来的东西整合起来的话，就需要更深入学习其他知识了，例如绘制和制作电路板。</p>
+<p>总而言之，Arduino就是创作&#x2F;电子制作启蒙工具，实质还是电子积木的形式，但这的确是快速实现一些idea最理想最便捷的平台。不过未来要把做出来的东西整合起来的话，就需要更深入学习其他知识了，例如绘制和制作电路板。</p>
 <p>当然，Arduino并不适合所有人，有的同学的确是想学习了解单片机的内部结构，或者从一开始起点比较高，做出来的东西接近一个实际产品（比如我，逃</p>
 <p>也许有同学要问：</p>
 <p><strong>那已经不再需要学习单片机了？</strong></p>
@@ -361,7 +406,7 @@
 <hr>
 <p>如果还有同学有兴趣并看到这个地方的话</p>
 <ul>
-<li>我想说我们常说的单片机比较正确的叫法是<strong>微控制器/微处理器</strong>，不过因为历史的原因已经习惯这个叫法了。</li>
+<li>我想说我们常说的单片机比较正确的叫法是<strong>微控制器&#x2F;微处理器</strong>，不过因为历史的原因已经习惯这个叫法了。</li>
 <li>对于很多工科专业的同学来说，51单片机是大学课程的内容之一，但Arduino对于大一大二模电数电单片机都还沒教的同学来说，Arduino会比较适合入门电子世界。</li>
 </ul>
 ]]></content>
@@ -376,13 +421,13 @@
   <entry>
     <title>修改你的Windows安装语言并升级到对应语言的Windows8/8.1/10</title>
     <url>/modify-install-language-and-upgrade/</url>
-    <content><![CDATA[<p>本文方法适用场景：希望把系统升级到另一个语言的系统版本（作为原生语言），而不需要额外添加语言包。适用于Windows7/8/8.1使用ISO升级安装。</p>
+    <content><![CDATA[<p>本文方法适用场景：希望把系统升级到另一个语言的系统版本（作为原生语言），而不需要额外添加语言包。适用于Windows7&#x2F;8&#x2F;8.1使用ISO升级安装。</p>
 <span id="more"></span>
 
 
 
 <h2 id="Step-1：把Windows界面语言设置为目标语言"><a href="#Step-1：把Windows界面语言设置为目标语言" class="headerlink" title="Step 1：把Windows界面语言设置为目标语言"></a>Step 1：把Windows界面语言设置为目标语言</h2><p><strong>A: Windows 7环境（非Ultimate版本）</strong><br>使用<a href="http://www.froggie.sk/en/index.html">Vistalizator</a>修改</p>
-<p><strong>B: Windows 7 Ultimate/Windows 8/Windows 8.1（单语言版除外）</strong><br>参考微软官方文档即可<br><a href="http://windows.microsoft.com/zh-cn/windows7/install-or-change-a-display-language">Windows 7 Ultimate</a><br><a href="http://windows.microsoft.com/zh-cn/windows-8/add-language-keyboard">Windows 8/Windows 8.1</a></p>
+<p><strong>B: Windows 7 Ultimate&#x2F;Windows 8&#x2F;Windows 8.1（单语言版除外）</strong><br>参考微软官方文档即可<br><a href="http://windows.microsoft.com/zh-cn/windows7/install-or-change-a-display-language">Windows 7 Ultimate</a><br><a href="http://windows.microsoft.com/zh-cn/windows-8/add-language-keyboard">Windows 8&#x2F;Windows 8.1</a></p>
 <h2 id="Step-2：修改注册表键值"><a href="#Step-2：修改注册表键值" class="headerlink" title="Step 2：修改注册表键值"></a>Step 2：修改注册表键值</h2><p><em>如果不执行Step 1就执行这一步，直接升级时会出现无法选择“保留应用方式升级安装”的选项，因为系统语言与镜像的语言不一致</em></p>
 <p>参考自<a href="http://www.ithome.com/html/win10/203571.htm">http://www.ithome.com/html/win10/203571.htm</a></p>
 <blockquote>
@@ -415,21 +460,21 @@
 <p><em>关于HP ProLiant MicroServer N54l：这是Gen8的前任，这一款型号比较旧现在已经彻底退出市场了。</em></p>
 <p>另外还可以看看这个<a href="https://www.chiphell.com/forum.php?mod=viewthread&tid=1586285&extra=page=2&filter=typeid&typeid=479">横向对比</a>，个人觉得<strong>HP ML10 Gen9</strong>低配版也是一个不错的方案，低配版CPU是6代Intel G4400，300美金左右。<br>服务器整机性价比一般都比较高，如果自己DIY组装，单独购买服务器级别的硬件反而会贵很多，因此建议直接购买服务器整机比较好。</p>
 <h2 id="DIY组装"><a href="#DIY组装" class="headerlink" title="DIY组装"></a>DIY组装</h2><p>DIY方案优势在于配置灵活，便于升级和更换零件。搭建平台时首先要考虑的是CPU和主板，因为其他部件都需要根据这里的选择来确定。</p>
-<h3 id="CPU-主板"><a href="#CPU-主板" class="headerlink" title="CPU+主板"></a>CPU+主板</h3><h4 id="家用芯片组"><a href="#家用芯片组" class="headerlink" title="家用芯片组"></a>家用芯片组</h4><p><em>按价格/性能/功耗低到高排列，主板如无注明均为ITX规格</em></p>
+<h3 id="CPU-主板"><a href="#CPU-主板" class="headerlink" title="CPU+主板"></a>CPU+主板</h3><h4 id="家用芯片组"><a href="#家用芯片组" class="headerlink" title="家用芯片组"></a>家用芯片组</h4><p><em>按价格&#x2F;性能&#x2F;功耗低到高排列，主板如无注明均为ITX规格</em></p>
 <p><strong>方案1</strong>：ASROCK J3160-ITX（主板集成CPU，推荐）  -  508元<br>此方案使用Intel J3160低功耗CPU，与Intel N3150和Intel J1900均为国内常见方案，也是品牌NAS一些高端配置的CPU，但后两款是旧一代产品不优先考虑。主板有4xSATA3接口，一个PCI-E插槽和一个Mini-PCIE插槽，使用笔记本DDR3内存。</p>
 <p><img src="/nas-build-hardware-solution/1942169112.jpg" alt="J3160-ITX(L4).jpg"></p>
 <p><strong>方案2</strong>：AMD 5350 + ASROCK AM1H-ITX  -  100美元（不含运费税费）<br>国外一个廉价NAS方案，性能功耗与J3160方案相当，有4xSATA3接口，使用DDR3内存，可惜主板CPU国内均不销售，需要海淘，海外党可以考虑。</p>
-<p>方案3，4为主流芯片组/CPU方案，因此搭配方面比较灵活，可以根据需求自行更改配置，此处提供几个典型配置参考。</p>
-<p><strong>方案3</strong>：Intel G1840 + MSI H81I  -  229+449=678元(京东)<br>Intel G1840是<strong>4代Intel CPU</strong>最便宜的一款，已经可以满足上述使用需求。主板有2xSATA6接口+ 2xSATA3接口，DDR3内存。</p>
+<p>方案3，4为主流芯片组&#x2F;CPU方案，因此搭配方面比较灵活，可以根据需求自行更改配置，此处提供几个典型配置参考。</p>
+<p><strong>方案3</strong>：Intel G1840 + MSI H81I  -  229+449&#x3D;678元(京东)<br>Intel G1840是<strong>4代Intel CPU</strong>最便宜的一款，已经可以满足上述使用需求。主板有2xSATA6接口+ 2xSATA3接口，DDR3内存。</p>
 <p>如果需要6个SATA接口的主板可以参考下面两个方案：</p>
-<p><strong>方案3可选</strong>：Intel G1840 + B85M-E45（M-ATX）- 229+429=658元(京东，手机专享价)<br>方案3的<strong>M-ATX</strong>方案，可提供6个SATA接口</p>
-<p><strong>方案4</strong>：Intel G4400 + B150M PRO-VDH（M-ATX） - 409+618=908元(京东，手机专享价)<br><strong>6代Intel CPU</strong>方案，<strong>M-ATX</strong>主板，可提供6个SATA接口，DDR4内存。</p>
+<p><strong>方案3可选</strong>：Intel G1840 + B85M-E45（M-ATX）- 229+429&#x3D;658元(京东，手机专享价)<br>方案3的<strong>M-ATX</strong>方案，可提供6个SATA接口</p>
+<p><strong>方案4</strong>：Intel G4400 + B150M PRO-VDH（M-ATX） - 409+618&#x3D;908元(京东，手机专享价)<br><strong>6代Intel CPU</strong>方案，<strong>M-ATX</strong>主板，可提供6个SATA接口，DDR4内存。</p>
 <h4 id="服务器芯片组"><a href="#服务器芯片组" class="headerlink" title="服务器芯片组"></a>服务器芯片组</h4><p><em>主板均为ITX规格</em></p>
-<p><strong>方案5</strong>： ASRock C2750D4I / ASRock C2550D4I （主板集成CPU）  -  2450/1750(淘宝)</p>
+<p><strong>方案5</strong>： ASRock C2750D4I &#x2F; ASRock C2550D4I （主板集成CPU）  -  2450&#x2F;1750(淘宝)</p>
 <p><img src="/nas-build-hardware-solution/541946293.jpg" alt="C2550D4I-1(L).jpg"></p>
-<p><strong>方案6</strong>： ASRock E3C226D2I/E3C224D2I + LGA 1150 CPU  - 1400/1300(淘宝) + CPU价格</p>
+<p><strong>方案6</strong>： ASRock E3C226D2I&#x2F;E3C224D2I + LGA 1150 CPU  - 1400&#x2F;1300(淘宝) + CPU价格</p>
 <p><img src="/nas-build-hardware-solution/3655661014.jpg" alt="E3C226D2I-1(L).jpg"></p>
-<p>方案5和方案6在外国论坛见得比较多，不过服务器芯片组的主板一般都比较贵，属于专业级/土豪级方案，因此仅列出作为参考不在本文讨论范围内。建议想用服务器芯片组方案的直接买服务器整机而不是DIY。</p>
+<p>方案5和方案6在外国论坛见得比较多，不过服务器芯片组的主板一般都比较贵，属于专业级&#x2F;土豪级方案，因此仅列出作为参考不在本文讨论范围内。建议想用服务器芯片组方案的直接买服务器整机而不是DIY。</p>
 <h3 id="机箱"><a href="#机箱" class="headerlink" title="机箱"></a>机箱</h3><p>家用NAS如果没有太高的要求可以选择<strong>ITX机箱</strong>，具有体积小的优点，而且淘宝也有比较多的NAS专用机箱可供选择。如果需要高扩展性的话可以考虑M-ATX机箱。</p>
 <p><strong>ITX方案1</strong>：IW-MS04  -  860元<br>外观与Gen8相似度很高，有<strong>4个硬盘热插拔位</strong>，相当不错的一个NAS机箱，缺点是价格高。</p>
 <p><img src="/nas-build-hardware-solution/526838041.jpg" alt="1418883524CLMCG1.jpg"></p>
@@ -455,125 +500,6 @@
       </categories>
       <tags>
         <tag>NAS</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Shutdown RabbitMQ consumer gracefully</title>
-    <url>/shutdown-rabbitmq-consumer-gracefully/</url>
-    <content><![CDATA[<p>Recently, I need to implement the graceful shutdown feature in a project, where there is a message queue consumer handling a large number of transactions in production, which can’t be terminated immediately by a simple kill command. Implementation was tricky, though, it’s a great chance to solidify my concurrent programming foundation.</p>
-<span id="more"></span>
-
-<h2 id="Theory"><a href="#Theory" class="headerlink" title="Theory"></a>Theory</h2><p>The idea is to utilize Unix (Unix-like, and POSIX-compliant) signal, a form of IPC (Inter-process communication). Users can notify the consumer by the <code>signal()</code> system call from other processes or command <code>kill [PID]</code>. By default, the <code>kill</code> command sends <code>SIGTERM</code>, the signal causing program termination, to the target. We just follow the convention.</p>
-<p>PHP has a <a href="http://php.net/manual/en/book.pcntl.php">PCNTL extension</a> to manipulate signals. The thought of implementation is to preinstall a signal handler that set a global flag, then frees resources and exits after the flag was detected by the main loop.</p>
-<p>The difficulty here is that, system-level signals would interrupt the normal execution of the current process, which continues after the signal handler returns. The concurrent execution flow could result in issues such as synchronization and race condition. The buggy code might affect the system ferociously after a long uptime.</p>
-<p>A fairly straightforward code is shown below.</p>
-<h2 id="Version-1"><a href="#Version-1" class="headerlink" title="Version 1"></a>Version 1</h2><figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="variable">$running</span> = <span class="literal">true</span>;</span><br><span class="line"></span><br><span class="line"><span class="variable">$connection</span> = <span class="keyword">new</span> AMQPStreamConnection(...);</span><br><span class="line"><span class="variable">$channel</span> = <span class="variable">$connection</span>-&gt;channel();</span><br><span class="line"></span><br><span class="line"><span class="variable">$callback</span> = <span class="function"><span class="keyword">function</span> (<span class="params"><span class="variable">$message</span></span>) </span>&#123;</span><br><span class="line">    pcntl_sigprocmask(SIG_BLOCK, [SIGTERM]);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Critical section entry</span></span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">    <span class="comment">// Critical section exit</span></span><br><span class="line"></span><br><span class="line">    pcntl_sigprocmask(SIG_UNBLOCK, [SIGTERM]);</span><br><span class="line">    pcntl_signal_dispatch();</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Initialization code</span></span><br><span class="line"><span class="comment">// ...</span></span><br><span class="line"><span class="variable">$channel</span>-&gt;basic_consume(..., <span class="variable">$callback</span>);</span><br><span class="line"></span><br><span class="line"><span class="variable">$signalHandler</span> = <span class="function"><span class="keyword">function</span> (<span class="params"><span class="variable">$signo</span></span>) <span class="keyword">use</span> (<span class="params">&amp;<span class="variable">$running</span></span>) </span>&#123;</span><br><span class="line">    <span class="variable">$running</span> = <span class="literal">false</span>;</span><br><span class="line">    <span class="keyword">echo</span> <span class="string">&quot;Received SIGTERM signal\n&quot;</span>;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Install signal handler</span></span><br><span class="line">pcntl_signal(SIGTERM, <span class="variable">$signalHandler</span>);</span><br><span class="line"></span><br><span class="line"><span class="keyword">while</span> (count(<span class="variable">$channel</span>-&gt;callbacks) &amp;&amp; <span class="variable">$running</span>) &#123;</span><br><span class="line">    <span class="variable">$channel</span>-&gt;wait();</span><br><span class="line">    pcntl_signal_dispatch();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Restore signal handler to avoid unexpected interruption</span></span><br><span class="line">pcntl_signal(SIGTERM, SIG_DFL);</span><br><span class="line"></span><br><span class="line"><span class="variable">$channel</span>-&gt;close();</span><br><span class="line"><span class="variable">$connection</span>-&gt;close();</span><br><span class="line"></span><br></pre></td></tr></table></figure>
-
-<p>The callback function calls <code>pcntl_sigprocmask()</code> to disable all interrupts, or just <code>SIGTERM</code> (depending on arguments) during the critical section, and re-enable interrupts after that. This procedure avoids the possibility that a kill signal breaks the transaction.</p>
-<p>The pending signal will not be processed until <code>pcntl_signal_dispatch()</code> is called. An alternate way is to use <code>declare(ticks=1)</code> to check the signal periodically.</p>
-<p>However, when there is no message handling, the consumer enters an idle state waiting for a new one. If we signal the program at this time. It’s possible to receive the following warning:</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">stream_select(): unable to select [4]: Interrupted system call (max_fd=7)</span><br></pre></td></tr></table></figure>
-
-<p>The reason is that the <code>$channel-&gt;wait()</code> call will eventually invoke the <code>select()</code> Unix function, which is interruptable by the <code>SIGTERM</code>.</p>
-<p>We can let the warning slip past of course. However, for a robust application, it’s a good practice to treat all PHP warnings as an exception (as some PHP frameworks did, such as Laravel and Swoole)</p>
-<p>Assume that the warning throws an <code>ErrorException</code> if the <code>stream_select</code> was interrupted. Here is the remedy:</p>
-<h2 id="Version-2"><a href="#Version-2" class="headerlink" title="Version 2"></a>Version 2</h2><figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="comment">// ...</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">while</span> (count(<span class="variable">$channel</span>-&gt;callbacks) &amp;&amp; <span class="variable">$running</span>) &#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="variable">$channel</span>-&gt;wait();</span><br><span class="line">    &#125; <span class="keyword">catch</span> (<span class="built_in">ErrorException</span> <span class="variable">$ex</span>) &#123;</span><br><span class="line">        <span class="keyword">if</span> (!preg_match(<span class="string">&#x27;~stream_select\\(\\)~i&#x27;</span>, <span class="variable">$ex</span>-&gt;getMessage())) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="variable">$ex</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    pcntl_signal_dispatch();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// ...</span></span><br></pre></td></tr></table></figure>
-
-<p>As there is no specific exception type for the <code>stream_select()</code> interruption, an unfriendly way is to check the message using regular expression.</p>
-<p>Looks great! Now go get ready for launch.</p>
-<p>Eh, Houston, we still have a problem.</p>
-<p>A race condition is introduced right after the <code>while</code> condition test and right before the <code>wait</code> invocation.</p>
-<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="keyword">while</span> (count(<span class="variable">$channel</span>-&gt;callbacks) &amp;&amp; <span class="variable">$running</span>) &#123;</span><br><span class="line">    <span class="comment">// Interruption here will be hanged until next loop</span></span><br><span class="line">    <span class="variable">$channel</span>-&gt;wait();</span><br><span class="line"></span><br><span class="line">    <span class="comment">// ...</span></span><br></pre></td></tr></table></figure>
-
-<p>A Unix-style solution is to use the <code>pselect()</code> function.</p>
-<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="comment">// pseudocode: pselect_wait() does not existed</span></span><br><span class="line"><span class="keyword">while</span> (count(<span class="variable">$channel</span>-&gt;callbacks)) &#123;</span><br><span class="line"></span><br><span class="line">    pcntl_sigprocmask(SIG_BLOCK, [SIGTERM]);</span><br><span class="line">    pcntl_signal_dispatch();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (!<span class="variable">$running</span>) &#123;</span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="variable">$channel</span>-&gt;pselect_wait([SIGTERM]);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// ...</span></span><br></pre></td></tr></table></figure>
-
-<p>Here, <code>pselect()</code> is equivalent to atomically executing the following calls:</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">pthread_sigmask(SIG_SETMASK, &amp;sigmask, &amp;origmask);</span><br><span class="line">ready = select(nfds, &amp;readfds, &amp;writefds, &amp;exceptfds, timeout);</span><br><span class="line">pthread_sigmask(SIG_SETMASK, &amp;origmask, NULL);</span><br></pre></td></tr></table></figure>
-
-<p>Unfortunately, there is no <code>pselect()</code> or <code>pselect_wait()</code> in PHP, this code is infeasible. We have no choice but to implement an inelegant mechanism by passing <em>timeout</em> parameter to the <code>$channel-&gt;wait()</code> method.</p>
-<h2 id="Version-3"><a href="#Version-3" class="headerlink" title="Version 3"></a>Version 3</h2><figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="variable">$running</span> = <span class="literal">true</span>;</span><br><span class="line"></span><br><span class="line"><span class="variable">$connection</span> = <span class="keyword">new</span> AMQPStreamConnection(...);</span><br><span class="line"><span class="variable">$channel</span> = <span class="variable">$connection</span>-&gt;channel();</span><br><span class="line"></span><br><span class="line"><span class="variable">$callback</span> = <span class="function"><span class="keyword">function</span> (<span class="params"><span class="variable">$message</span></span>) </span>&#123;</span><br><span class="line">    pcntl_sigprocmask(SIG_BLOCK, [SIGTERM]);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Critical section entry</span></span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">    <span class="comment">// Critical section exit</span></span><br><span class="line"></span><br><span class="line">    pcntl_sigprocmask(SIG_UNBLOCK, [SIGTERM]);</span><br><span class="line">    pcntl_signal_dispatch();</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Initialization code</span></span><br><span class="line"><span class="comment">// ...</span></span><br><span class="line"><span class="variable">$channel</span>-&gt;basic_consume(..., <span class="variable">$callback</span>);</span><br><span class="line"></span><br><span class="line"><span class="variable">$signalHandler</span> = <span class="function"><span class="keyword">function</span> (<span class="params"><span class="variable">$signo</span></span>) <span class="keyword">use</span> (<span class="params">&amp;<span class="variable">$running</span></span>) </span>&#123;</span><br><span class="line">    <span class="variable">$running</span> = <span class="literal">false</span>;</span><br><span class="line">    <span class="keyword">echo</span> <span class="string">&quot;Received SIGTERM signal \n&quot;</span>;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Install signal handler</span></span><br><span class="line">pcntl_signal(SIGTERM, <span class="variable">$signalHandler</span>);</span><br><span class="line"></span><br><span class="line"><span class="keyword">while</span> (count(<span class="variable">$channel</span>-&gt;callbacks) &amp;&amp; <span class="variable">$running</span>) &#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="variable">$channel</span>-&gt;wait(<span class="literal">null</span>, <span class="literal">false</span>, <span class="number">15</span>);</span><br><span class="line">    &#125; <span class="keyword">catch</span> (<span class="built_in">ErrorException</span> <span class="variable">$ex</span>) &#123;</span><br><span class="line">        <span class="keyword">if</span> (!preg_match(<span class="string">&#x27;~stream_select\\(\\)~i&#x27;</span>, <span class="variable">$ex</span>-&gt;getMessage())) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="variable">$ex</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; <span class="keyword">catch</span> (\PhpAmqpLib\<span class="built_in">Exception</span>\AMQPTimeoutException <span class="variable">$ex</span>) &#123;</span><br><span class="line">        <span class="comment">//</span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    pcntl_signal_dispatch();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Restore signal handler to avoid unexpected interruption</span></span><br><span class="line">pcntl_signal(SIGTERM, SIG_DFL);</span><br><span class="line"></span><br><span class="line"><span class="variable">$channel</span>-&gt;close();</span><br><span class="line"><span class="variable">$connection</span>-&gt;close();</span><br><span class="line"></span><br></pre></td></tr></table></figure>
-
-<p>The <code>$channel-&gt;wait()</code> will time out periodically and throw an <code>AMQPTimeoutException</code>. We just ignore it and continue our next loop if no termination signal is issued. Of course, the exception might be raised for other reasons as it’s a general timeout exception. Further action has to be taken if necessary in your project.</p>
-<p>Also, if the <code>SIGTERM</code> is called just before the <code>$channel-&gt;wait()</code>, there will be an unavoidable delay with <em>timeout</em> seconds before normal exit.</p>
-<h2 id="Epilogue"><a href="#Epilogue" class="headerlink" title="Epilogue"></a>Epilogue</h2><p>I implemented this feature based on several references, including one project using this mechanism. Still, I won’t say this is the best or perfect solution. If you have any better ideas or find any problems, feel free to reply.</p>
-<h2 id="References"><a href="#References" class="headerlink" title="References"></a>References</h2><p> <a href="https://github.com/php-amqplib/php-amqplib/issues/165">https://github.com/php-amqplib/php-amqplib/issues/165</a><br> <a href="https://linux.die.net/man/2/pselect">https://linux.die.net/man/2/pselect</a><br> <a href="https://en.wikipedia.org/wiki/Signal_(IPC)">https://en.wikipedia.org/wiki/Signal_(IPC)</a>
- </p>
-]]></content>
-      <categories>
-        <category>Coding</category>
-      </categories>
-      <tags>
-        <tag>PHP</tag>
-        <tag>RabbitMQ</tag>
-        <tag>Concurrency</tag>
-        <tag>Linux</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>为Windows apps应用设置本地代理</title>
-    <url>/setup-proxy-for-windows-apps/</url>
-    <content><![CDATA[<p>由于众所周知的原因，Wikipedia，Twitter，Facebook这些网站需要设置代理才可以正常访问。正常情况下，电脑安装了代理工具在浏览器或者普通程序中访问是没有问题的，但在Windows 8/8.1/10的商店程序（Windows apps）即使设置了代理也会出现无法连接的情况。<br><img src="/setup-proxy-for-windows-apps/1715843754.png"></p>
-<span id="more"></span>
-
-
-
-<h2 id="原因分析"><a href="#原因分析" class="headerlink" title="原因分析"></a>原因分析</h2><p>经过研究，原因跟Windows apps的运行机制有关系。默认情况下，所有Windows apps均运行在被称为”AppContainers”的独立进程上，默认情况下AppContainers会阻止网络流量发送到本地，因此Windows apps无法连接到本地代理服务器。而这个问题同样也影响了一些开发者使用Fiddler抓包工具本地分析和调试程序。</p>
-<p>在<a href="https://blogs.msdn.microsoft.com/fiddler/2011/12/10/revisiting-fiddler-and-win8-immersive-applications/">这篇博客</a>中作者介绍了使用新版Fiddler的工具或者下载独立的 EnableLoopback Utility 为特定程序设置启用Loopback通信功能（Exempt，豁免），我们也可以通过这个办法使被墙的apps连接本地代理服务器使代理生效。</p>
-<h2 id="具体步骤"><a href="#具体步骤" class="headerlink" title="具体步骤"></a>具体步骤</h2><p><em>感谢 <strong>Daniel</strong> 的提醒，Fiddler移动了程序的下载位置，已更新下载链接。</em><br>下载<a href="https://telerik-fiddler.s3.amazonaws.com/fiddler/addons/enableloopbackutility.exe">EnableLoopback Utility</a>工具并安装。</p>
-<p>如果想看到更详细的信息或者设置可以使用<a href="https://loopback.codeplex.com/">Windows Loopback Exemption Manager</a>，操作方法大同小异。使用Windows Loopback Exemption Manager可以看到Edge浏览器默认开启了这个功能，所以Edge才可以正常使用代理或者访问本地主机。</p>
-<p>安装好EnableLoopback Utility后程序自动打开，或者在开始菜单找到”Enable AppContainer Loopback”打开，根据需要点击要开启Loopback的程序，或者直接点”Exempt All”设置所有程序开启，最后点<strong>Save Changes</strong>即可，之后可以点 Refresh 刷新查看当前设置或者关闭程序。<br><img src="/setup-proxy-for-windows-apps/2178465291.png"></p>
-<p>此时再打开Wikipedia，已经可以正常访问。<br><img src="/setup-proxy-for-windows-apps/1374248038.jpg"></p>
-<p>该方法适用于大部分Windows apps程序，邮件程序亦可以正常连接Gmail邮箱，但仍然有部分应用不支持，如Facebook即使开启了Loopback仍然会出现连接超时的问题。</p>
-<hr>
-<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p><a href="https://blogs.msdn.microsoft.com/fiddler/2011/12/10/revisiting-fiddler-and-win8-immersive-applications/">https://blogs.msdn.microsoft.com/fiddler/2011/12/10/revisiting-fiddler-and-win8-immersive-applications/</a><br><a href="https://my.oschina.net/farces/blog/616110">https://my.oschina.net/farces/blog/616110</a><br><a href="https://loopback.codeplex.com/">https://loopback.codeplex.com/</a></p>
-]]></content>
-      <categories>
-        <category>Tech</category>
-      </categories>
-      <tags>
-        <tag>Windows</tag>
-        <tag>代理</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Intel NUC8i7BEH 实现核显直通</title>
-    <url>/zh-CN/igd-passthrough-for-intel-nuc8i7beh/</url>
-    <content><![CDATA[<h1 id="宿主机环境"><a href="#宿主机环境" class="headerlink" title="宿主机环境"></a>宿主机环境</h1><p>虚拟化环境：Proxmox 7.0<br>硬件：Intel NUC NUC8i7BEH<br>BIOS：UEFI Mode</p>
-<span id="more"></span>
-
-
-<h1 id="配置PVE"><a href="#配置PVE" class="headerlink" title="配置PVE"></a>配置PVE</h1><h2 id="开启-IOMMU"><a href="#开启-IOMMU" class="headerlink" title="开启 IOMMU"></a>开启 IOMMU</h2><p>修改 <code>/etc/default/grub</code> 文件<br>找到 <code>GRUB_CMDLINE_LINUX_DEFAULT</code> 一行，替换为<br><code>GRUB_CMDLINE_LINUX_DEFAULT=&quot;quiet intel_iommu=on video=efifb:off,vesafb:off&quot;</code><br>保存后执行 <code>update-grub</code> 更新grub</p>
-<h2 id="加载-VFIO-模块"><a href="#加载-VFIO-模块" class="headerlink" title="加载 VFIO 模块"></a>加载 VFIO 模块</h2><p>修改 <code>/etc/modules</code> 文件，添加以下内容</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">vfio</span><br><span class="line">vfio_iommu_type1</span><br><span class="line">vfio_pci</span><br><span class="line">vfio_virqfd</span><br></pre></td></tr></table></figure>
-
-<h2 id="添加驱动黑名单"><a href="#添加驱动黑名单" class="headerlink" title="添加驱动黑名单"></a>添加驱动黑名单</h2><p>修改 <code>/etc/modprobe.d/pve-blacklist.conf</code> 添加以下内容：</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">blacklist snd_hda_intel</span><br><span class="line">blacklist snd_hda_codec_hdmi</span><br><span class="line">blacklist i915</span><br></pre></td></tr></table></figure>
-
-<h2 id="绑定显卡到-VFIO"><a href="#绑定显卡到-VFIO" class="headerlink" title="绑定显卡到 VFIO"></a>绑定显卡到 VFIO</h2><p>执行 <code>lspci -n | grep -E &quot;0300&quot;</code> 查看并记录核显 VendorID 和 DeviceID</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">00:02.0 0300: 8086:3ea5 (rev 01)</span><br></pre></td></tr></table></figure>
-<p>修改 <code>/etc/modprobe.d/vfio.conf</code> 添加如下内容<br><code>options vfio-pci ids=8086:3ea5</code></p>
-<h2 id="验证"><a href="#验证" class="headerlink" title="验证"></a>验证</h2><p>重启，若启动界面卡在 <code>Loading initial ramdisk ...</code> 表示核显已被屏蔽<br>执行 <code>lsmod | grep vfio</code> 得到类似输出，表示已加载成功</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">vfio_pci               57344  2</span><br><span class="line">vfio_virqfd            16384  1 vfio_pci</span><br><span class="line">irqbypass              16384  14 vfio_pci,kvm</span><br><span class="line">vfio_iommu_type1       36864  1</span><br><span class="line">vfio                   36864  7 vfio_iommu_type1,vfio_pci</span><br></pre></td></tr></table></figure>
-
-<h1 id="提取核显ROM"><a href="#提取核显ROM" class="headerlink" title="提取核显ROM"></a>提取核显ROM</h1><p>TLDR: <a href="https://github.com/KiritoA/igd-passthrough/blob/main/intel-iris-655.rom">已提取好的ROM文件</a></p>
-<p>参照 <a href="https://github.com/tmbeck/nuc-passthrough#requirements">https://github.com/tmbeck/nuc-passthrough</a> 提取核显ROM，放置到<code>/usr/share/kvm</code> ，下文假设文件路径为 <code>/usr/share/kvm/intel-iris-655.rom</code></p>
-<h1 id="配置虚拟机参数"><a href="#配置虚拟机参数" class="headerlink" title="配置虚拟机参数"></a>配置虚拟机参数</h1><ul>
-<li>Machine 必须设置为默认的 <code>i440fx</code> ，否则启动会提示 <code>legacy IGD assignment is not compatible with q35</code></li>
-<li>Display 必须设置为 <code>none</code> ，否则启动会提示 <code>legacy IGD assignment requires VGA mode to be &#39;none&#39;</code></li>
-<li>添加显卡 PCI 设备，NUC 对应 ID <code>0000:00:02.0</code></li>
-</ul>
-<h1 id="手工修改虚拟机配置"><a href="#手工修改虚拟机配置" class="headerlink" title="手工修改虚拟机配置"></a>手工修改虚拟机配置</h1><p>修改<code>/etc/pve/qemu-server/&lt;vmid&gt;.conf</code> 文件， <code>&lt;vmid&gt;</code> 对于虚拟机ID，找到添加的显卡设备一行，追加 <code>,legacy-igd=1,romfile=intel-iris-655.rom</code> ，启用 IDG Passthrough和加载ROM<br>如 <code>hostpci0: 0000:00:02.0</code><br>修改为 <code>hostpci0: 0000:00:02.0,legacy-igd=1,romfile=intel-iris-655.rom</code></p>
-<h1 id="尝试启动虚拟机"><a href="#尝试启动虚拟机" class="headerlink" title="尝试启动虚拟机"></a>尝试启动虚拟机</h1><p>提前确认好远程桌面服务启动正常，否则由于noVNC被禁用，无法控制操作系统。<br>进入设备管理器，检查显示驱动是否正常工作，没有感叹号提示。<br>此外可以选择直通USB控制器 <code>0000:00:14.0</code>，获得更好的使用体验。</p>
-<h1 id="Reference"><a href="#Reference" class="headerlink" title="Reference"></a>Reference</h1><p><a href="https://pve.proxmox.com/wiki/Pci_passthrough">https://pve.proxmox.com/wiki/Pci_passthrough</a><br><a href="https://github.com/tmbeck/nuc-passthrough">https://github.com/tmbeck/nuc-passthrough</a><br><a href="https://blog.timzhong.top/2020/09/27/pve-direct-pcie/">https://blog.timzhong.top/2020/09/27/pve-direct-pcie/</a><br><a href="https://www.10bests.com/win10-htpc-on-pve/">https://www.10bests.com/win10-htpc-on-pve/</a></p>
-]]></content>
-      <categories>
-        <category>Tech</category>
-      </categories>
-      <tags>
-        <tag>NUC8i7BEH</tag>
-        <tag>Proxmox</tag>
-        <tag>虚拟化</tag>
       </tags>
   </entry>
   <entry>
@@ -611,7 +537,7 @@
 <p>主板方面选择的是华擎的<a href="http://www.asrock.com/mb/Intel/J3160M/index.asp">J3160M</a>，M-ATX规格主板，2xSATA3接口，CPU被动散热无需风扇。选择它主要是因为手头上有多余的台式DDR3内存可以用上，而且也有不错的扩展性（3xPCI-E Slot），不过SATA接口略不足，需要加SATA扩展卡扩展。</p>
 <p><img src="/nas-build-log-practical/3779195123.jpg" alt="J3160M(L2).jpg"></p>
 <p><img src="/nas-build-log-practical/1506247690.jpg" alt="J3160M(L5).jpg"></p>
-<p>而ITX版本<a href="http://www.asrock.com/mb/Intel/J3160-ITX/index.asp">华擎J3160-ITX</a>提供4xSATA3，1xPCI-E Slot + 1x Mini-PCIE Slot，使用笔记本DDR3/DDR3L内存，如果对体积有需求直接考虑ITX板。如果想拓展SATA口可以买Mini-PCIE插槽的扩展卡，可额外提供2个SATA接口。</p>
+<p>而ITX版本<a href="http://www.asrock.com/mb/Intel/J3160-ITX/index.asp">华擎J3160-ITX</a>提供4xSATA3，1xPCI-E Slot + 1x Mini-PCIE Slot，使用笔记本DDR3&#x2F;DDR3L内存，如果对体积有需求直接考虑ITX板。如果想拓展SATA口可以买Mini-PCIE插槽的扩展卡，可额外提供2个SATA接口。</p>
 <p>内存8G的确是有点过剩了，如果不上虚拟化的话迟些出掉一条或者装到另一台电脑上。</p>
 <p>硬盘都是之前留下来的东西，虽然说希捷坏盘率高什么的，但两块硬盘用了这么多年都还健在，也没看到警告信息，可能是运行时间不长的原因吧(◔౪◔)（两硬盘在线时间均为3000小时左右）。不过迟些会上WD的红盘。</p>
 <p>实际测试了一下功耗，总结如下：</p>
@@ -649,13 +575,13 @@
 <p><img src="/nas-build-log-practical/3673292591.png" alt="NewNas4freescreenshot.png"></p>
 <h3 id="OpenMediaVault"><a href="#OpenMediaVault" class="headerlink" title="OpenMediaVault"></a>OpenMediaVault</h3><p>OpenMediaVault是基于Debian的NAS系统，简称OMV。由于是一个Linux-based的系统，可以支持Ext3, Ext4, XFS, JFS等Linux常见分区，除了OMV本身提供的插件也可以自行安装各种基于Linux应用，总的来说是十分强大的，近几年来也渐渐火起来。</p>
 <h3 id="黑群晖"><a href="#黑群晖" class="headerlink" title="黑群晖"></a>黑群晖</h3><p>黑群晖是通过破解品牌NAS<strong>群晖</strong>的系统启动引导，制作出引导文件使普通电脑都可以安装群晖系统，实际使用上基本达到与群晖一致的体验，想说一下的是有人声称群晖使用的是加密分区格式，系统一旦损坏数据就拿不出来。实际上群晖使用就是Linux的EXT4分区，不存在加密一说，使用Linux-based系统就可以把里面的内容提取出来，官方也提供了相关教程。不过黑群晖肯定是非官方授权的也是没有售后支援的，所以使用上会有一定的风险，出现问题要自己解决。</p>
-<h3 id="Windows-Server-2012-R2-Windows-10"><a href="#Windows-Server-2012-R2-Windows-10" class="headerlink" title="Windows Server 2012 R2 / Windows 10"></a>Windows Server 2012 R2 / Windows 10</h3><p>Windows Server系统的话就不用多说了，功能强大而且配置flexible，有需要可以上Hyper-V虚拟化，不过500刀的价钱不是每个人都能承受的起。Windows 10同样支持虚拟化，对于不想折腾的人来说也是个不错的选择。<em>（请支持正版）</em></p>
+<h3 id="Windows-Server-2012-R2-x2F-Windows-10"><a href="#Windows-Server-2012-R2-x2F-Windows-10" class="headerlink" title="Windows Server 2012 R2 &#x2F; Windows 10"></a>Windows Server 2012 R2 &#x2F; Windows 10</h3><p>Windows Server系统的话就不用多说了，功能强大而且配置flexible，有需要可以上Hyper-V虚拟化，不过500刀的价钱不是每个人都能承受的起。Windows 10同样支持虚拟化，对于不想折腾的人来说也是个不错的选择。<em>（请支持正版）</em></p>
 <hr>
 <h2 id="折腾篇"><a href="#折腾篇" class="headerlink" title="折腾篇"></a>折腾篇</h2><h3 id="OpenMediaVault初体验"><a href="#OpenMediaVault初体验" class="headerlink" title="OpenMediaVault初体验"></a>OpenMediaVault初体验</h3><p>OMV总的来说也算是一个不错的系统，对于熟悉Linux的人来说实在是太方便，但是官方给出了这么一个需求：</p>
 <blockquote>
 <p><strong>System Drive</strong><br>The whole disc will be occupied by the System and swap space, so size doesn’t matter so much. Data storage on the system disc is not supported.<br>Spinning Harddisk, SSD, Disk-on-Module, CompactFlash or USB thumb drive type drives can be used as System Drive.<br><strong>If you use a Flash Drive, select one with static wear leveling, without it the drive will have a very short lifetime.</strong> It is also recommended to activate the Flash memory Plugin: (see Plug-ins) The entire disk is used as system disk. This disk can not be used to store user data.<br><em><a href="http://wiki.openmediavault.org/index.php?title=Prerequisites">http://wiki.openmediavault.org/index.php?title=Prerequisites</a></em></p>
 </blockquote>
-<p>大致的意思就是，如果你使用Flash储存设备做系统盘的话，要找那些静态损耗均衡（就是类似SSD Trim技术的意思）的设备，不然的话很快就会完蛋，所以一定要找长擦写寿命的。使用SSD是个比较好的选择，系统安装好后虽然会把整个硬盘占用了，但是可以自行分区腾出空间供作储存。但是手头上没有SSD硬盘空闲，电商逛了一圈现在一线大厂SSD 60G价格跟128/120G的都差不多价格，便宜的SSD又怕出问题。偶然看到有SLC U盘这么一样东西，据说寿命比普通U盘都要长，于是在淘宝找了个59包邮的SLC U盘，本来想着系统盘读写量又不是很大找个便宜点的U盘就算了（据说都是小作坊产品），而且这个是SLC储存理论上寿命也是可以的(Flag)。</p>
+<p>大致的意思就是，如果你使用Flash储存设备做系统盘的话，要找那些静态损耗均衡（就是类似SSD Trim技术的意思）的设备，不然的话很快就会完蛋，所以一定要找长擦写寿命的。使用SSD是个比较好的选择，系统安装好后虽然会把整个硬盘占用了，但是可以自行分区腾出空间供作储存。但是手头上没有SSD硬盘空闲，电商逛了一圈现在一线大厂SSD 60G价格跟128&#x2F;120G的都差不多价格，便宜的SSD又怕出问题。偶然看到有SLC U盘这么一样东西，据说寿命比普通U盘都要长，于是在淘宝找了个59包邮的SLC U盘，本来想着系统盘读写量又不是很大找个便宜点的U盘就算了（据说都是小作坊产品），而且这个是SLC储存理论上寿命也是可以的(Flag)。</p>
 <p><img src="/nas-build-log-practical/3053182115.jpg" alt="T1YWYhXj8eXXc3ZFI2_043031.jpg_430x430q90.jpg"></p>
 <p>安装完成后看到界面，看起来还是不错的，有一些插件需要安装第三方安装包，根据个人需求，安装DLNA插件和VirtualBox就差不多了。</p>
 <p><img src="/nas-build-log-practical/3802864263.png" alt="Screenshot 2016-07-10 16.31.00.png"></p>
@@ -664,7 +590,7 @@
 <p>Round2：嗯？噢上次弄虚拟机的时候好像动过内核，好吧这次不加那么多插件了，就开默认服务运行，应该可以了吧。<br>然后过了几天。。<br>嗯？黑屏？</p>
 <p>很好，这次U盘插到手提上直接识别不了了，U盘指示灯持续闪烁，似乎被玩坏了。。我去这还不是U盘问题？然后。。。然后火速退货了。。。</p>
 <p>特么真的是便宜没好货啊。。折腾了一个星期结果又回到原点，NAS依然无法上线。无奈下还是要继续考虑其他方案。</p>
-<p>Round3：找找手头上有个2G老U盘空闲可以当系统盘，那就安装上去试试吧，然而使用起来发现2M/s写入的速度实在太感人了，安装个插件都要10分钟，遂放弃。</p>
+<p>Round3：找找手头上有个2G老U盘空闲可以当系统盘，那就安装上去试试吧，然而使用起来发现2M&#x2F;s写入的速度实在太感人了，安装个插件都要10分钟，遂放弃。</p>
 <p>Round4：拿个4G Micro SD卡来试试，用那2G U盘坐安装盘，但U盘似乎不兼容Debian，安装程序找不到CR-ROM安装文件，中间重试了若干次。。。<br>好吧。。只好在虚拟机安装，这下终于好了，然而当我要安装插件的时候。。</p>
 <p><img src="/nas-build-log-practical/1391370919.png" alt="Screenshot 2016-07-09 22.11.03.png"></p>
 <p>然后就卡！死！了！</p>
@@ -673,7 +599,7 @@
 <p>Round5：手头没SSD始终比较麻烦，能安装到U盘的NAS系统还有FreeNAS、NAS4Free，虽然是有8G内存达到要求，但没有ECC始终是一个风险，因为ZFS文件系统极度依赖内存的可靠性（数据无价）。看看手头上剩下的选择，虽然有些无奈，但只有黑群晖可以选择了。</p>
 <h3 id="黑群晖折腾篇"><a href="#黑群晖折腾篇" class="headerlink" title="黑群晖折腾篇"></a>黑群晖折腾篇</h3><p>群晖的系统都会在每一块硬盘安装一份，而不是安装在U盘，U盘只会在开机做引导作用，至少不会那么容易被玩坏。。</p>
 <p>Round6：黑群晖安装教程可以参考这个<a href="http://www.nasyun.com/thread-24296-1-1.html">帖子</a>，不过建议黑群晖版本去官网找个新版本些的，<a href="http://xpenology.me/downloads/">XPEnology黑群晖官网下载</a>。</p>
-<p>按照教程修改引导镜像，写入U盘，第一次引导时要在启动菜单选择Install/Upgrade一项，进行群晖系统的安装。</p>
+<p>按照教程修改引导镜像，写入U盘，第一次引导时要在启动菜单选择Install&#x2F;Upgrade一项，进行群晖系统的安装。</p>
 <p>使用Synology Assistant很快就可以找到NAS的机器</p>
 <p><img src="/nas-build-log-practical/3848539345.png" alt="Untitled.png"></p>
 <p>写入系统文件<br><img src="/nas-build-log-practical/3457044370.png" alt="Screenshot 2016-07-10 19.04.52.png"></p>
@@ -703,7 +629,7 @@ Something wicked happened resolving &#39;packages.openmediavault.org:http&#39; (
 <p>无法解析域名。。DNS服务器挂了？但网络是正常的啊，其他电脑也能正常上网。Google了一番，终于检查到是<code>/etc/resolv.conf</code>里面的DNS地址是错误的，因为之前在虚拟机安装OMV的网卡是NAT模式，因此被设置成一个错误的DNS IP地址（虚拟网卡的网关IP，跟实际网络IP不同），立马更改回来，一切正常了，终于是明白了之前界面卡死的原因。</p>
 <p>不过在Micro SD卡装的系统，安装程序那感人的速度又让我想起用树莓派的日子了。。。还好使用时不会影响反应速度</p>
 <p>然后对比了一下两系统硬盘休眠被唤醒的情况：</p>
-<p><em>测试条件：开启SMB/CIFS共享服务和DLNA共享服务，OMV和群晖均开启硬盘休眠功能</em></p>
+<p><em>测试条件：开启SMB&#x2F;CIFS共享服务和DLNA共享服务，OMV和群晖均开启硬盘休眠功能</em></p>
 <table>
 <thead>
 <tr>
@@ -751,13 +677,13 @@ Something wicked happened resolving &#39;packages.openmediavault.org:http&#39; (
 <p>到底谁好谁坏呢？这里并没有得出结论，如果硬盘经常性唤醒，频繁开关可能会影响硬盘寿命。硬盘保持唤醒有即时反应的优势，因为休眠的硬盘启动到响应操作需要一定的时间，但这样整体功耗相对又会比较高。所谓熊掌不可兼得大概也就如此吧。</p>
 <p>根据测试情况，建议<strong>尽量不要映射网络驱动器</strong>，这样可以避免出现时常唤醒硬盘的情况，而且使用映射网络驱动器时如果NAS没开机而其他电脑先开机还会有错误框弹出。当然了如果有需求的话除外，说实话这个功能还是挺好用的。</p>
 <p>一个比较好的替代方案是使用<strong>添加网络位置</strong>功能（OMV有效），这样在Windows中只会把NAS共享文件夹看成是文件夹，而不是一个驱动器，虽然损失了一些高级功能（把共享文件夹看作一个真实分区），但硬盘再也不会频繁休眠唤醒了。</p>
-<p>至此，NAS算是稳定配置好了，到头来还是用回了OMV，毕竟是Linux-based系统，耐得起折腾，使用黑裙晖还有合法性问题。不过自己DIY NAS，路上都是一个又一个坑啊，不想折腾还是买成品吧(´c_`)。</p>
+<p>至此，NAS算是稳定配置好了，到头来还是用回了OMV，毕竟是Linux-based系统，耐得起折腾，使用黑裙晖还有合法性问题。不过自己DIY NAS，路上都是一个又一个坑啊，不想折腾还是买成品吧(´c_&#96;)。</p>
 <h3 id="速度实测"><a href="#速度实测" class="headerlink" title="速度实测"></a>速度实测</h3><p>NAS最重要的一点就是要求网络环境达到千兆速度，最好先将网络环境升级到千兆有线网络（包括路由器、网线、网卡）再部署NAS，有线网络环境达标才能有比较好的访问速度。</p>
 <p>读取速度：NAS到PC</p>
 <p><img src="/nas-build-log-practical/2391837075.png" alt="read.png"></p>
 <p>写入速度：PC到NAS</p>
 <p><img src="/nas-build-log-practical/1024739463.png" alt="write.png"></p>
-<p>总体感觉还是比较满意的，读写都能达到千兆网络的瓶颈速度，CPU占用率上升到40%左右，当然这还要靠强大的希捷1T硬盘，用了这么多年都仍然保持着读写100M/s的水准，因此一直都没考虑过要加固态硬盘。</p>
+<p>总体感觉还是比较满意的，读写都能达到千兆网络的瓶颈速度，CPU占用率上升到40%左右，当然这还要靠强大的希捷1T硬盘，用了这么多年都仍然保持着读写100M&#x2F;s的水准，因此一直都没考虑过要加固态硬盘。</p>
 <p>WIFI环境下就变成了这个可怜的速度。。。</p>
 <p><img src="/nas-build-log-practical/2335383978.png" alt="Screenshot 2016-07-16 13.00.02.png"></p>
 <h2 id="后记"><a href="#后记" class="headerlink" title="后记"></a>后记</h2><p>根据之前的需求列表，本次打造的完成情况：</p>
@@ -789,48 +715,122 @@ Something wicked happened resolving &#39;packages.openmediavault.org:http&#39; (
       </tags>
   </entry>
   <entry>
-    <title>Fixing bad ACL permission on my Synology NAS</title>
-    <url>/fixing-bad-acl-permission-on-my-synology-nas/</url>
-    <content><![CDATA[<h1 id="The-Issue"><a href="#The-Issue" class="headerlink" title="The Issue"></a>The Issue</h1><p>Yesterday, I created a new administrator account for my Synology NAS. For easier management, just like usual, I copied my SSH key into the NAS by calling the <code>ssh-copy-id</code> command. Strangely, that didn’t work. And it kept asking me to enter my password every time I log in. This thing had never happened before.</p>
+    <title>为Windows apps应用设置本地代理</title>
+    <url>/setup-proxy-for-windows-apps/</url>
+    <content><![CDATA[<p>由于众所周知的原因，Wikipedia，Twitter，Facebook这些网站需要设置代理才可以正常访问。正常情况下，电脑安装了代理工具在浏览器或者普通程序中访问是没有问题的，但在Windows 8&#x2F;8.1&#x2F;10的商店程序（Windows apps）即使设置了代理也会出现无法连接的情况。<br><img src="/setup-proxy-for-windows-apps/1715843754.png"></p>
 <span id="more"></span>
 
-<h1 id="The-Diagnosis"><a href="#The-Diagnosis" class="headerlink" title="The Diagnosis"></a>The Diagnosis</h1><p>Thankfully, I had another backup Synology NAS, which could be the control group for diagnosing. I tried to create a new administrator account on that machine and verified that this problem only happened to my current NAS.</p>
-<p>I enabled the SSH verbose mode <code>ssh -v</code> to connect both of my machines and compare their output. I immediately noticed the difference.</p>
-<p>Problem NAS</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">debug1: Next authentication method: publickey</span><br><span class="line">debug1: Trying private key: /Users/user1/.ssh/id_rsa</span><br><span class="line">debug1: Trying private key: /Users/user1/.ssh/id_ecdsa</span><br><span class="line">debug1: Trying private key: /Users/user1/.ssh/id_ecdsa_sk</span><br><span class="line">debug1: Offering public key: /Users/user1/.ssh/id_ed25519 ED25519</span><br><span class="line">debug1: Authentications that can continue: publickey,password</span><br><span class="line">debug1: Trying private key: /Users/user1/.ssh/id_ed25519_sk</span><br><span class="line">debug1: Trying private key: /Users/user1/.ssh/id_xmss</span><br><span class="line">debug1: Trying private key: /Users/user1/.ssh/id_dsa</span><br><span class="line">debug1: Next authentication method: password</span><br><span class="line">user1@192.168.30.5&#x27;s password: </span><br></pre></td></tr></table></figure>
 
-<p>Healthy NAS</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">debug1: Next authentication method: publickey</span><br><span class="line">debug1: Trying private key: /Users/user2/.ssh/id_rsa</span><br><span class="line">debug1: Trying private key: /Users/user2/.ssh/id_ecdsa</span><br><span class="line">debug1: Trying private key: /Users/user2/.ssh/id_ecdsa_sk</span><br><span class="line">debug1: Offering public key: /Users/user2/.ssh/id_ed25519 ED25519</span><br><span class="line">debug1: Server accepts key: /Users/user2/.ssh/id_ed25519 ED25519</span><br><span class="line">Authenticated to 192.168.30.7 ([192.168.30.7]:22) using &quot;publickey&quot;.</span><br></pre></td></tr></table></figure>
 
-<p>Looks like the server didn’t accept my SSH key. But that should never happen as I double-checked the <code>authorized_key</code> file on both of my NAS, as well as the file permissions and owner, which were identical.</p>
-<p>I would like to check the server log as well. So I started an SSH debug server by calling <code>sudo /bin/sshd -d -p 2222</code> to try to get the server log. At that time, I finally located the cause of this problem.</p>
-<p>Problem NAS</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">debug1: temporarily_use_uid: 1034/100 (e=0/0)</span><br><span class="line">debug1: trying public key file /var/services/homes/user1/.ssh/authorized_keys</span><br><span class="line">debug1: fd 4 clearing O_NONBLOCK</span><br><span class="line">Authentication refused: bad ACL permission for file /volume1/homes/user1/.ssh/authorized_keys</span><br></pre></td></tr></table></figure>
-
-<p>Healthy NAS</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">debug1: temporarily_use_uid: 1026/100 (e=0/0)</span><br><span class="line">debug1: trying public key file /var/services/homes/user2/.ssh/authorized_keys</span><br><span class="line">debug1: fd 4 clearing O_NONBLOCK</span><br><span class="line">debug1: /var/services/homes/user2/.ssh/authorized_keys:1: matching key found: ED25519</span><br><span class="line">debug1: /var/services/homes/user2/.ssh/authorized_keys:1: key options: agent-forwarding port-forwarding pty user-rc x11-forwarding</span><br><span class="line">Accepted key ED25519 found at /var/services/homes/user2/.ssh/authorized_keys:1</span><br></pre></td></tr></table></figure>
-
-<p>So there were some problems with the ACL permissions. I did check my file permissions on the NAS web GUI, it seems normal and flawless.</p>
-<p>During the research, I came across this article <a href="https://community.synology.com/enu/forum/17/post/111114">https://community.synology.com/enu/forum/17/post/111114</a>, realizing that deleting an account could cause this issue. I did remove an unused admin user right before then. So I tried to call <code>ls -el</code> through SSH to check my file permissions. Finally, The reason was clear. There was an unknown user!</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">user1@Problem-NAS:~/.ssh$ ls -el</span><br><span class="line">total 4</span><br><span class="line">-rwxrwxrwx+ 1 user1 users 107 Jun 10 21:32 authorized_keys</span><br><span class="line">	 [0] user:user1:allow:rwxpdDaARWcCo:---- (level: 2)</span><br><span class="line">	 [1] group:administrators:allow:rwxpdDaARWc--:---- (level: 3)</span><br><span class="line">	 [2] user:(null):allow:rwxpdDaARWc--:---- (level: 3)</span><br><span class="line">	 [3] everyone::allow:--x----------:---- (level: 3)</span><br><span class="line">	 [4] user:user1:allow:rwxpdDaARWcCo:---- (level: 3)</span><br></pre></td></tr></table></figure>
-
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">user@Healthy-NAS:~/.ssh$ ls -el</span><br><span class="line">total 4</span><br><span class="line">-rwxrwxrwx+ 1 user2 users 107 Jun  2 16:19 authorized_keys</span><br><span class="line">	 [0] user:user2:allow:rwxpdDaARWcCo:---- (level: 2)</span><br><span class="line">	 [1] group:administrators:allow:rwxpdDaARWc--:---- (level: 3)</span><br><span class="line">	 [2] user:user2:allow:rwxpdDaARWcCo:---- (level: 3)</span><br><span class="line">	 [3] everyone::allow:--x----------:---- (level: 3)</span><br></pre></td></tr></table></figure>
-
-<p>Somehow this unknown user didn’t show up on the GUI. I can only confirm it through SSH. That’s why I didn’t notice it in the first place.</p>
-<h1 id="The-Solution"><a href="#The-Solution" class="headerlink" title="The Solution"></a>The Solution</h1><p>Coming from the instinct of a Software Engineer, I believe I can fix this by resetting the permissions list. I don’t want to do that through SSH. Instead, I do that on the Synology Web UI.</p>
-<ol>
-<li>Go to the File Station. Right-click the <code>homes</code> shared folder. Select <code>Properties</code>.</li>
-<li>Go to the Permission tab and click <code>Create</code>. Arbitrary choose a user and assign permissions. (e.g. I assigned <code>Traverse folders/Execute files permission</code> for user <code>Everyone</code>)</li>
-<li>Click <code>Done</code> to save and exit the <code>Permission Editor</code> window and click <code>Save</code> to exit the <code>Properties</code> Window.</li>
-<li>Enter the <code>Properties</code> window again. Delete the newly created permission and save.</li>
-</ol>
-<p>Updating the permission list on the root shared folder will apply to all the containing files, as permissions are inherited by default.</p>
-<p>For me, I have to repeat these steps on most of my shared folders as I also found the unknown user in other locations. I guess I messed up the ACL permissions sometime in the past.</p>
-<h1 id="Reference"><a href="#Reference" class="headerlink" title="Reference"></a>Reference</h1><p><a href="https://community.synology.com/enu/forum/17/post/111114">https://community.synology.com/enu/forum/17/post/111114</a><br><a href="https://kb.synology.com/en-uk/DSM/help/FileStation/privilege?version=7">https://kb.synology.com/en-uk/DSM/help/FileStation/privilege?version=7</a><br><a href="https://community.synology.com/enu/forum/17/post/101650nu/forum/17/post/101650">https://community.synology.com/enu/forum/17/post/101650nu/forum/17/post/101650</a></p>
+<h2 id="原因分析"><a href="#原因分析" class="headerlink" title="原因分析"></a>原因分析</h2><p>经过研究，原因跟Windows apps的运行机制有关系。默认情况下，所有Windows apps均运行在被称为”AppContainers”的独立进程上，默认情况下AppContainers会阻止网络流量发送到本地，因此Windows apps无法连接到本地代理服务器。而这个问题同样也影响了一些开发者使用Fiddler抓包工具本地分析和调试程序。</p>
+<p>在<a href="https://blogs.msdn.microsoft.com/fiddler/2011/12/10/revisiting-fiddler-and-win8-immersive-applications/">这篇博客</a>中作者介绍了使用新版Fiddler的工具或者下载独立的 EnableLoopback Utility 为特定程序设置启用Loopback通信功能（Exempt，豁免），我们也可以通过这个办法使被墙的apps连接本地代理服务器使代理生效。</p>
+<h2 id="具体步骤"><a href="#具体步骤" class="headerlink" title="具体步骤"></a>具体步骤</h2><p><em>感谢 <strong>Daniel</strong> 的提醒，Fiddler移动了程序的下载位置，已更新下载链接。</em><br>下载<a href="https://telerik-fiddler.s3.amazonaws.com/fiddler/addons/enableloopbackutility.exe">EnableLoopback Utility</a>工具并安装。</p>
+<p>如果想看到更详细的信息或者设置可以使用<a href="https://loopback.codeplex.com/">Windows Loopback Exemption Manager</a>，操作方法大同小异。使用Windows Loopback Exemption Manager可以看到Edge浏览器默认开启了这个功能，所以Edge才可以正常使用代理或者访问本地主机。</p>
+<p>安装好EnableLoopback Utility后程序自动打开，或者在开始菜单找到”Enable AppContainer Loopback”打开，根据需要点击要开启Loopback的程序，或者直接点”Exempt All”设置所有程序开启，最后点<strong>Save Changes</strong>即可，之后可以点 Refresh 刷新查看当前设置或者关闭程序。<br><img src="/setup-proxy-for-windows-apps/2178465291.png"></p>
+<p>此时再打开Wikipedia，已经可以正常访问。<br><img src="/setup-proxy-for-windows-apps/1374248038.jpg"></p>
+<p>该方法适用于大部分Windows apps程序，邮件程序亦可以正常连接Gmail邮箱，但仍然有部分应用不支持，如Facebook即使开启了Loopback仍然会出现连接超时的问题。</p>
+<hr>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p><a href="https://blogs.msdn.microsoft.com/fiddler/2011/12/10/revisiting-fiddler-and-win8-immersive-applications/">https://blogs.msdn.microsoft.com/fiddler/2011/12/10/revisiting-fiddler-and-win8-immersive-applications/</a><br><a href="https://my.oschina.net/farces/blog/616110">https://my.oschina.net/farces/blog/616110</a><br><a href="https://loopback.codeplex.com/">https://loopback.codeplex.com/</a></p>
 ]]></content>
+      <categories>
+        <category>Tech</category>
+      </categories>
       <tags>
-        <tag>NAS</tag>
-        <tag>Synology</tag>
+        <tag>Windows</tag>
+        <tag>代理</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Shutdown RabbitMQ consumer gracefully</title>
+    <url>/shutdown-rabbitmq-consumer-gracefully/</url>
+    <content><![CDATA[<p>Recently, I need to implement the graceful shutdown feature in a project, where there is a message queue consumer handling a large number of transactions in production, which can’t be terminated immediately by a simple kill command. Implementation was tricky, though, it’s a great chance to solidify my concurrent programming foundation.</p>
+<span id="more"></span>
+
+<h2 id="Theory"><a href="#Theory" class="headerlink" title="Theory"></a>Theory</h2><p>The idea is to utilize Unix (Unix-like, and POSIX-compliant) signal, a form of IPC (Inter-process communication). Users can notify the consumer by the <code>signal()</code> system call from other processes or command <code>kill [PID]</code>. By default, the <code>kill</code> command sends <code>SIGTERM</code>, the signal causing program termination, to the target. We just follow the convention.</p>
+<p>PHP has a <a href="http://php.net/manual/en/book.pcntl.php">PCNTL extension</a> to manipulate signals. The thought of implementation is to preinstall a signal handler that set a global flag, then frees resources and exits after the flag was detected by the main loop.</p>
+<p>The difficulty here is that, system-level signals would interrupt the normal execution of the current process, which continues after the signal handler returns. The concurrent execution flow could result in issues such as synchronization and race condition. The buggy code might affect the system ferociously after a long uptime.</p>
+<p>A fairly straightforward code is shown below.</p>
+<h2 id="Version-1"><a href="#Version-1" class="headerlink" title="Version 1"></a>Version 1</h2><figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="variable">$running</span> = <span class="literal">true</span>;</span><br><span class="line"></span><br><span class="line"><span class="variable">$connection</span> = <span class="keyword">new</span> <span class="title class_">AMQPStreamConnection</span>(...);</span><br><span class="line"><span class="variable">$channel</span> = <span class="variable">$connection</span>-&gt;<span class="title function_ invoke__">channel</span>();</span><br><span class="line"></span><br><span class="line"><span class="variable">$callback</span> = <span class="function"><span class="keyword">function</span> (<span class="params"><span class="variable">$message</span></span>) </span>&#123;</span><br><span class="line">    <span class="title function_ invoke__">pcntl_sigprocmask</span>(SIG_BLOCK, [SIGTERM]);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Critical section entry</span></span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">    <span class="comment">// Critical section exit</span></span><br><span class="line"></span><br><span class="line">    <span class="title function_ invoke__">pcntl_sigprocmask</span>(SIG_UNBLOCK, [SIGTERM]);</span><br><span class="line">    <span class="title function_ invoke__">pcntl_signal_dispatch</span>();</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Initialization code</span></span><br><span class="line"><span class="comment">// ...</span></span><br><span class="line"><span class="variable">$channel</span>-&gt;<span class="title function_ invoke__">basic_consume</span>(..., <span class="variable">$callback</span>);</span><br><span class="line"></span><br><span class="line"><span class="variable">$signalHandler</span> = <span class="function"><span class="keyword">function</span> (<span class="params"><span class="variable">$signo</span></span>) <span class="keyword">use</span> (<span class="params">&amp;<span class="variable">$running</span></span>) </span>&#123;</span><br><span class="line">    <span class="variable">$running</span> = <span class="literal">false</span>;</span><br><span class="line">    <span class="keyword">echo</span> <span class="string">&quot;Received SIGTERM signal\n&quot;</span>;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Install signal handler</span></span><br><span class="line"><span class="title function_ invoke__">pcntl_signal</span>(SIGTERM, <span class="variable">$signalHandler</span>);</span><br><span class="line"></span><br><span class="line"><span class="keyword">while</span> (<span class="title function_ invoke__">count</span>(<span class="variable">$channel</span>-&gt;callbacks) &amp;&amp; <span class="variable">$running</span>) &#123;</span><br><span class="line">    <span class="variable">$channel</span>-&gt;<span class="title function_ invoke__">wait</span>();</span><br><span class="line">    <span class="title function_ invoke__">pcntl_signal_dispatch</span>();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Restore signal handler to avoid unexpected interruption</span></span><br><span class="line"><span class="title function_ invoke__">pcntl_signal</span>(SIGTERM, SIG_DFL);</span><br><span class="line"></span><br><span class="line"><span class="variable">$channel</span>-&gt;<span class="title function_ invoke__">close</span>();</span><br><span class="line"><span class="variable">$connection</span>-&gt;<span class="title function_ invoke__">close</span>();</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>The callback function calls <code>pcntl_sigprocmask()</code> to disable all interrupts, or just <code>SIGTERM</code> (depending on arguments) during the critical section, and re-enable interrupts after that. This procedure avoids the possibility that a kill signal breaks the transaction.</p>
+<p>The pending signal will not be processed until <code>pcntl_signal_dispatch()</code> is called. An alternate way is to use <code>declare(ticks=1)</code> to check the signal periodically.</p>
+<p>However, when there is no message handling, the consumer enters an idle state waiting for a new one. If we signal the program at this time. It’s possible to receive the following warning:</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">stream_select(): unable to select [4]: Interrupted system call (max_fd=7)</span><br></pre></td></tr></table></figure>
+
+<p>The reason is that the <code>$channel-&gt;wait()</code> call will eventually invoke the <code>select()</code> Unix function, which is interruptable by the <code>SIGTERM</code>.</p>
+<p>We can let the warning slip past of course. However, for a robust application, it’s a good practice to treat all PHP warnings as an exception (as some PHP frameworks did, such as Laravel and Swoole)</p>
+<p>Assume that the warning throws an <code>ErrorException</code> if the <code>stream_select</code> was interrupted. Here is the remedy:</p>
+<h2 id="Version-2"><a href="#Version-2" class="headerlink" title="Version 2"></a>Version 2</h2><figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="comment">// ...</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">while</span> (<span class="title function_ invoke__">count</span>(<span class="variable">$channel</span>-&gt;callbacks) &amp;&amp; <span class="variable">$running</span>) &#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="variable">$channel</span>-&gt;<span class="title function_ invoke__">wait</span>();</span><br><span class="line">    &#125; <span class="keyword">catch</span> (<span class="built_in">ErrorException</span> <span class="variable">$ex</span>) &#123;</span><br><span class="line">        <span class="keyword">if</span> (!<span class="title function_ invoke__">preg_match</span>(<span class="string">&#x27;~stream_select\\(\\)~i&#x27;</span>, <span class="variable">$ex</span>-&gt;<span class="title function_ invoke__">getMessage</span>())) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="variable">$ex</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="title function_ invoke__">pcntl_signal_dispatch</span>();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// ...</span></span><br></pre></td></tr></table></figure>
+
+<p>As there is no specific exception type for the <code>stream_select()</code> interruption, an unfriendly way is to check the message using regular expression.</p>
+<p>Looks great! Now go get ready for launch.</p>
+<p>Eh, Houston, we still have a problem.</p>
+<p>A race condition is introduced right after the <code>while</code> condition test and right before the <code>wait</code> invocation.</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="keyword">while</span> (<span class="title function_ invoke__">count</span>(<span class="variable">$channel</span>-&gt;callbacks) &amp;&amp; <span class="variable">$running</span>) &#123;</span><br><span class="line">    <span class="comment">// Interruption here will be hanged until next loop</span></span><br><span class="line">    <span class="variable">$channel</span>-&gt;<span class="title function_ invoke__">wait</span>();</span><br><span class="line"></span><br><span class="line">    <span class="comment">// ...</span></span><br></pre></td></tr></table></figure>
+
+<p>A Unix-style solution is to use the <code>pselect()</code> function.</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="comment">// pseudocode: pselect_wait() does not existed</span></span><br><span class="line"><span class="keyword">while</span> (<span class="title function_ invoke__">count</span>(<span class="variable">$channel</span>-&gt;callbacks)) &#123;</span><br><span class="line"></span><br><span class="line">    <span class="title function_ invoke__">pcntl_sigprocmask</span>(SIG_BLOCK, [SIGTERM]);</span><br><span class="line">    <span class="title function_ invoke__">pcntl_signal_dispatch</span>();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (!<span class="variable">$running</span>) &#123;</span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="variable">$channel</span>-&gt;<span class="title function_ invoke__">pselect_wait</span>([SIGTERM]);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// ...</span></span><br></pre></td></tr></table></figure>
+
+<p>Here, <code>pselect()</code> is equivalent to atomically executing the following calls:</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">pthread_sigmask(SIG_SETMASK, &amp;sigmask, &amp;origmask);</span><br><span class="line">ready = select(nfds, &amp;readfds, &amp;writefds, &amp;exceptfds, timeout);</span><br><span class="line">pthread_sigmask(SIG_SETMASK, &amp;origmask, NULL);</span><br></pre></td></tr></table></figure>
+
+<p>Unfortunately, there is no <code>pselect()</code> or <code>pselect_wait()</code> in PHP, this code is infeasible. We have no choice but to implement an inelegant mechanism by passing <em>timeout</em> parameter to the <code>$channel-&gt;wait()</code> method.</p>
+<h2 id="Version-3"><a href="#Version-3" class="headerlink" title="Version 3"></a>Version 3</h2><figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="variable">$running</span> = <span class="literal">true</span>;</span><br><span class="line"></span><br><span class="line"><span class="variable">$connection</span> = <span class="keyword">new</span> <span class="title class_">AMQPStreamConnection</span>(...);</span><br><span class="line"><span class="variable">$channel</span> = <span class="variable">$connection</span>-&gt;<span class="title function_ invoke__">channel</span>();</span><br><span class="line"></span><br><span class="line"><span class="variable">$callback</span> = <span class="function"><span class="keyword">function</span> (<span class="params"><span class="variable">$message</span></span>) </span>&#123;</span><br><span class="line">    <span class="title function_ invoke__">pcntl_sigprocmask</span>(SIG_BLOCK, [SIGTERM]);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Critical section entry</span></span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">    <span class="comment">// Critical section exit</span></span><br><span class="line"></span><br><span class="line">    <span class="title function_ invoke__">pcntl_sigprocmask</span>(SIG_UNBLOCK, [SIGTERM]);</span><br><span class="line">    <span class="title function_ invoke__">pcntl_signal_dispatch</span>();</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Initialization code</span></span><br><span class="line"><span class="comment">// ...</span></span><br><span class="line"><span class="variable">$channel</span>-&gt;<span class="title function_ invoke__">basic_consume</span>(..., <span class="variable">$callback</span>);</span><br><span class="line"></span><br><span class="line"><span class="variable">$signalHandler</span> = <span class="function"><span class="keyword">function</span> (<span class="params"><span class="variable">$signo</span></span>) <span class="keyword">use</span> (<span class="params">&amp;<span class="variable">$running</span></span>) </span>&#123;</span><br><span class="line">    <span class="variable">$running</span> = <span class="literal">false</span>;</span><br><span class="line">    <span class="keyword">echo</span> <span class="string">&quot;Received SIGTERM signal \n&quot;</span>;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Install signal handler</span></span><br><span class="line"><span class="title function_ invoke__">pcntl_signal</span>(SIGTERM, <span class="variable">$signalHandler</span>);</span><br><span class="line"></span><br><span class="line"><span class="keyword">while</span> (<span class="title function_ invoke__">count</span>(<span class="variable">$channel</span>-&gt;callbacks) &amp;&amp; <span class="variable">$running</span>) &#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="variable">$channel</span>-&gt;<span class="title function_ invoke__">wait</span>(<span class="literal">null</span>, <span class="literal">false</span>, <span class="number">15</span>);</span><br><span class="line">    &#125; <span class="keyword">catch</span> (<span class="built_in">ErrorException</span> <span class="variable">$ex</span>) &#123;</span><br><span class="line">        <span class="keyword">if</span> (!<span class="title function_ invoke__">preg_match</span>(<span class="string">&#x27;~stream_select\\(\\)~i&#x27;</span>, <span class="variable">$ex</span>-&gt;<span class="title function_ invoke__">getMessage</span>())) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="variable">$ex</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; <span class="keyword">catch</span> (\PhpAmqpLib\<span class="built_in">Exception</span>\AMQPTimeoutException <span class="variable">$ex</span>) &#123;</span><br><span class="line">        <span class="comment">//</span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="title function_ invoke__">pcntl_signal_dispatch</span>();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Restore signal handler to avoid unexpected interruption</span></span><br><span class="line"><span class="title function_ invoke__">pcntl_signal</span>(SIGTERM, SIG_DFL);</span><br><span class="line"></span><br><span class="line"><span class="variable">$channel</span>-&gt;<span class="title function_ invoke__">close</span>();</span><br><span class="line"><span class="variable">$connection</span>-&gt;<span class="title function_ invoke__">close</span>();</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>The <code>$channel-&gt;wait()</code> will time out periodically and throw an <code>AMQPTimeoutException</code>. We just ignore it and continue our next loop if no termination signal is issued. Of course, the exception might be raised for other reasons as it’s a general timeout exception. Further action has to be taken if necessary in your project.</p>
+<p>Also, if the <code>SIGTERM</code> is called just before the <code>$channel-&gt;wait()</code>, there will be an unavoidable delay with <em>timeout</em> seconds before normal exit.</p>
+<h2 id="Epilogue"><a href="#Epilogue" class="headerlink" title="Epilogue"></a>Epilogue</h2><p>I implemented this feature based on several references, including one project using this mechanism. Still, I won’t say this is the best or perfect solution. If you have any better ideas or find any problems, feel free to reply.</p>
+<h2 id="References"><a href="#References" class="headerlink" title="References"></a>References</h2><p> <a href="https://github.com/php-amqplib/php-amqplib/issues/165">https://github.com/php-amqplib/php-amqplib/issues/165</a><br> <a href="https://linux.die.net/man/2/pselect">https://linux.die.net/man/2/pselect</a><br> <a href="https://en.wikipedia.org/wiki/Signal_(IPC)">https://en.wikipedia.org/wiki/Signal_(IPC)</a>
+ </p>
+]]></content>
+      <categories>
+        <category>Coding</category>
+      </categories>
+      <tags>
+        <tag>PHP</tag>
+        <tag>RabbitMQ</tag>
+        <tag>Concurrency</tag>
+        <tag>Linux</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Intel NUC8i7BEH 实现核显直通</title>
+    <url>/zh-CN/igd-passthrough-for-intel-nuc8i7beh/</url>
+    <content><![CDATA[<h1 id="宿主机环境"><a href="#宿主机环境" class="headerlink" title="宿主机环境"></a>宿主机环境</h1><p>虚拟化环境：Proxmox 7.0<br>硬件：Intel NUC NUC8i7BEH<br>BIOS：UEFI Mode</p>
+<span id="more"></span>
+
+
+<h1 id="配置PVE"><a href="#配置PVE" class="headerlink" title="配置PVE"></a>配置PVE</h1><h2 id="开启-IOMMU"><a href="#开启-IOMMU" class="headerlink" title="开启 IOMMU"></a>开启 IOMMU</h2><p>修改 <code>/etc/default/grub</code> 文件<br>找到 <code>GRUB_CMDLINE_LINUX_DEFAULT</code> 一行，替换为<br><code>GRUB_CMDLINE_LINUX_DEFAULT=&quot;quiet intel_iommu=on video=efifb:off,vesafb:off&quot;</code><br>保存后执行 <code>update-grub</code> 更新grub</p>
+<h2 id="加载-VFIO-模块"><a href="#加载-VFIO-模块" class="headerlink" title="加载 VFIO 模块"></a>加载 VFIO 模块</h2><p>修改 <code>/etc/modules</code> 文件，添加以下内容</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">vfio</span><br><span class="line">vfio_iommu_type1</span><br><span class="line">vfio_pci</span><br><span class="line">vfio_virqfd</span><br></pre></td></tr></table></figure>
+
+<h2 id="添加驱动黑名单"><a href="#添加驱动黑名单" class="headerlink" title="添加驱动黑名单"></a>添加驱动黑名单</h2><p>修改 <code>/etc/modprobe.d/pve-blacklist.conf</code> 添加以下内容：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">blacklist snd_hda_intel</span><br><span class="line">blacklist snd_hda_codec_hdmi</span><br><span class="line">blacklist i915</span><br></pre></td></tr></table></figure>
+
+<h2 id="绑定显卡到-VFIO"><a href="#绑定显卡到-VFIO" class="headerlink" title="绑定显卡到 VFIO"></a>绑定显卡到 VFIO</h2><p>执行 <code>lspci -n | grep -E &quot;0300&quot;</code> 查看并记录核显 VendorID 和 DeviceID</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">00:02.0 0300: 8086:3ea5 (rev 01)</span><br></pre></td></tr></table></figure>
+<p>修改 <code>/etc/modprobe.d/vfio.conf</code> 添加如下内容<br><code>options vfio-pci ids=8086:3ea5</code></p>
+<h2 id="验证"><a href="#验证" class="headerlink" title="验证"></a>验证</h2><p>重启，若启动界面卡在 <code>Loading initial ramdisk ...</code> 表示核显已被屏蔽<br>执行 <code>lsmod | grep vfio</code> 得到类似输出，表示已加载成功</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">vfio_pci               57344  2</span><br><span class="line">vfio_virqfd            16384  1 vfio_pci</span><br><span class="line">irqbypass              16384  14 vfio_pci,kvm</span><br><span class="line">vfio_iommu_type1       36864  1</span><br><span class="line">vfio                   36864  7 vfio_iommu_type1,vfio_pci</span><br></pre></td></tr></table></figure>
+
+<h1 id="提取核显ROM"><a href="#提取核显ROM" class="headerlink" title="提取核显ROM"></a>提取核显ROM</h1><p>TLDR: <a href="https://github.com/KiritoA/igd-passthrough/blob/main/intel-iris-655.rom">已提取好的ROM文件</a></p>
+<p>参照 <a href="https://github.com/tmbeck/nuc-passthrough#requirements">https://github.com/tmbeck/nuc-passthrough</a> 提取核显ROM，放置到<code>/usr/share/kvm</code> ，下文假设文件路径为 <code>/usr/share/kvm/intel-iris-655.rom</code></p>
+<h1 id="配置虚拟机参数"><a href="#配置虚拟机参数" class="headerlink" title="配置虚拟机参数"></a>配置虚拟机参数</h1><ul>
+<li>Machine 必须设置为默认的 <code>i440fx</code> ，否则启动会提示 <code>legacy IGD assignment is not compatible with q35</code></li>
+<li>Display 必须设置为 <code>none</code> ，否则启动会提示 <code>legacy IGD assignment requires VGA mode to be &#39;none&#39;</code></li>
+<li>添加显卡 PCI 设备，NUC 对应 ID <code>0000:00:02.0</code></li>
+</ul>
+<h1 id="手工修改虚拟机配置"><a href="#手工修改虚拟机配置" class="headerlink" title="手工修改虚拟机配置"></a>手工修改虚拟机配置</h1><p>修改<code>/etc/pve/qemu-server/&lt;vmid&gt;.conf</code> 文件， <code>&lt;vmid&gt;</code> 对于虚拟机ID，找到添加的显卡设备一行，追加 <code>,legacy-igd=1,romfile=intel-iris-655.rom</code> ，启用 IDG Passthrough和加载ROM<br>如 <code>hostpci0: 0000:00:02.0</code><br>修改为 <code>hostpci0: 0000:00:02.0,legacy-igd=1,romfile=intel-iris-655.rom</code></p>
+<h1 id="尝试启动虚拟机"><a href="#尝试启动虚拟机" class="headerlink" title="尝试启动虚拟机"></a>尝试启动虚拟机</h1><p>提前确认好远程桌面服务启动正常，否则由于noVNC被禁用，无法控制操作系统。<br>进入设备管理器，检查显示驱动是否正常工作，没有感叹号提示。<br>此外可以选择直通USB控制器 <code>0000:00:14.0</code>，获得更好的使用体验。</p>
+<h1 id="Reference"><a href="#Reference" class="headerlink" title="Reference"></a>Reference</h1><p><a href="https://pve.proxmox.com/wiki/Pci_passthrough">https://pve.proxmox.com/wiki/Pci_passthrough</a><br><a href="https://github.com/tmbeck/nuc-passthrough">https://github.com/tmbeck/nuc-passthrough</a><br><a href="https://blog.timzhong.top/2020/09/27/pve-direct-pcie/">https://blog.timzhong.top/2020/09/27/pve-direct-pcie/</a><br><a href="https://www.10bests.com/win10-htpc-on-pve/">https://www.10bests.com/win10-htpc-on-pve/</a></p>
+]]></content>
+      <categories>
+        <category>Tech</category>
+      </categories>
+      <tags>
+        <tag>NUC8i7BEH</tag>
+        <tag>Proxmox</tag>
+        <tag>虚拟化</tag>
       </tags>
   </entry>
 </search>

@@ -29,9 +29,9 @@
     
     
     
-    <category term="NAS" scheme="https://kiritox.me/tags/NAS/"/>
-    
     <category term="Synology" scheme="https://kiritox.me/tags/Synology/"/>
+    
+    <category term="NAS" scheme="https://kiritox.me/tags/NAS/"/>
     
   </entry>
   
@@ -111,7 +111,7 @@
     <link href="https://kiritox.me/enable-bootstrap-for-laravel/"/>
     <id>https://kiritox.me/enable-bootstrap-for-laravel/</id>
     <published>2018-01-05T14:24:00.000Z</published>
-    <updated>2021-08-08T03:58:40.280Z</updated>
+    <updated>2021-08-08T03:58:42.000Z</updated>
     
     
     <summary type="html">&lt;p&gt;尽管 Laravel 已经推出到 5.5 版本，但其默认的 Bootstrap 组件仍然是 3 的版本，而 Bootstrap 4 已经 Beta 很长一段时间，或许因为不是正式版 Laravel 并没有集成新版本，但我们完全可以手动把版本更换成 4.0。&lt;/p&gt;
@@ -135,10 +135,10 @@
     <link href="https://kiritox.me/attack-on-titan-tv-bd-comparison/"/>
     <id>https://kiritox.me/attack-on-titan-tv-bd-comparison/</id>
     <published>2017-03-25T13:32:00.000Z</published>
-    <updated>2021-08-08T04:10:19.568Z</updated>
+    <updated>2021-08-08T04:10:20.000Z</updated>
     
     
-    <summary type="html">&lt;p&gt;其实在搭好博客初期就计划要写这篇TV/BD比较的，结果因为拖延症发作balabala之类的原因一直没动过笔，然而现在第二季都说要来了才想起这篇东西还没写。。。&lt;/p&gt;
+    <summary type="html">&lt;p&gt;其实在搭好博客初期就计划要写这篇TV&amp;#x2F;BD比较的，结果因为拖延症发作balabala之类的原因一直没动过笔，然而现在第二季都说要来了才想起这篇东西还没写。。。&lt;/p&gt;
 &lt;p&gt;咳咳，言归正传，首先是强烈建议在观看进击的巨人第二季前重温一次第一季&lt;strong&gt;BD版&lt;/strong&gt;，在重新熟悉剧情的同时说不定能发现新惊喜，尤其是13话。当初想写这篇文章的原因是BD版本就如之前网友所说的对画面作出了很多修正，使得BD版本与TV版本产生了不小的差异，可以说经到了让人惊讶的地步。&lt;/p&gt;</summary>
     
     
@@ -155,10 +155,10 @@
     <link href="https://kiritox.me/setup-proxy-for-windows-apps/"/>
     <id>https://kiritox.me/setup-proxy-for-windows-apps/</id>
     <published>2017-03-17T08:43:00.000Z</published>
-    <updated>2021-08-08T04:05:20.289Z</updated>
+    <updated>2021-08-08T04:05:22.000Z</updated>
     
     
-    <summary type="html">&lt;p&gt;由于众所周知的原因，Wikipedia，Twitter，Facebook这些网站需要设置代理才可以正常访问。正常情况下，电脑安装了代理工具在浏览器或者普通程序中访问是没有问题的，但在Windows 8/8.1/10的商店程序（Windows apps）即使设置了代理也会出现无法连接的情况。&lt;br&gt;&lt;img src=&quot;/setup-proxy-for-windows-apps/1715843754.png&quot;&gt;&lt;/p&gt;</summary>
+    <summary type="html">&lt;p&gt;由于众所周知的原因，Wikipedia，Twitter，Facebook这些网站需要设置代理才可以正常访问。正常情况下，电脑安装了代理工具在浏览器或者普通程序中访问是没有问题的，但在Windows 8&amp;#x2F;8.1&amp;#x2F;10的商店程序（Windows apps）即使设置了代理也会出现无法连接的情况。&lt;br&gt;&lt;img src=&quot;/setup-proxy-for-windows-apps/1715843754.png&quot;&gt;&lt;/p&gt;</summary>
     
     
     
@@ -176,7 +176,7 @@
     <link href="https://kiritox.me/flash-wndr3700v4-to-stock-firmware/"/>
     <id>https://kiritox.me/flash-wndr3700v4-to-stock-firmware/</id>
     <published>2016-11-23T02:38:00.000Z</published>
-    <updated>2021-08-08T04:40:02.533Z</updated>
+    <updated>2021-08-08T04:40:04.000Z</updated>
     
     
     <summary type="html">&lt;p&gt;之前刷 Openwrt 的时候已经有人反映过说再也刷不回原厂固件，不过我是不太相信的，因为路由器本身有救砖模式。不过真正刷的时候还是折腾了好一阵子，但肯定是没问题的。这里结合网上的帖子和自己的研究分析了一下原因并列出解决步骤，本文适用于刷了 OpenWrt 或者 DD-WRT 的 NETGEAR WNDR3700v4 路由器，直接 TFTP 方式刷回原厂固件失败的情况。此方法也适用于 WNDR4300，自行查找对应的固件刷入即可。&lt;/p&gt;</summary>
@@ -197,7 +197,7 @@
     <link href="https://kiritox.me/home-fiber-network-upgrade-log/"/>
     <id>https://kiritox.me/home-fiber-network-upgrade-log/</id>
     <published>2016-11-22T12:22:00.000Z</published>
-    <updated>2021-08-08T09:40:43.006Z</updated>
+    <updated>2021-08-08T09:40:44.000Z</updated>
     
     
     <summary type="html">&lt;p&gt;电信的光纤升级改造计划已经搞了好几年，虽然一直都有想升级的想法，但是之前电信一直都说线路没有覆盖到不能升级，到了最近终于说是覆盖到小区了，不过去了电信营业厅问才知道升级也要收钱的( ˘･з･)没想到去完营业厅第二天电信（不是营业厅的人）就打电话来说现在要光进铜退，可以免费升光纤，我擦。。。。还好没同意升级不然白花钱了。&lt;/p&gt;</summary>
@@ -216,7 +216,7 @@
     <link href="https://kiritox.me/nas-build-log-practical/"/>
     <id>https://kiritox.me/nas-build-log-practical/</id>
     <published>2016-07-17T11:09:00.000Z</published>
-    <updated>2021-08-08T09:37:52.703Z</updated>
+    <updated>2021-08-08T09:37:54.000Z</updated>
     
     
     <summary type="html">&lt;p&gt;本来题目是想写实践篇的，但是折腾一圈下来发现这应该叫折腾篇才对，因为实在是太太太。。。折腾了&lt;/p&gt;</summary>
@@ -235,7 +235,7 @@
     <link href="https://kiritox.me/nas-build-hardware-solution/"/>
     <id>https://kiritox.me/nas-build-hardware-solution/</id>
     <published>2016-06-27T14:19:00.000Z</published>
-    <updated>2021-08-08T04:17:00.910Z</updated>
+    <updated>2021-08-08T04:17:02.000Z</updated>
     
     
     <summary type="html">&lt;p&gt;大概一年前就已经有打造NAS这个计划，不过因为各种原因一直没付诸于实践，最近因为把台式的CPU和主板二手出了终于是把这个计划提上了日程。经过一番Google和逛各种论坛对目前流行的NAS的硬件方案做了一下总结&lt;/p&gt;</summary>
@@ -254,7 +254,7 @@
     <link href="https://kiritox.me/learn-arduino-rather-than-mcu/"/>
     <id>https://kiritox.me/learn-arduino-rather-than-mcu/</id>
     <published>2016-06-07T09:43:00.000Z</published>
-    <updated>2021-08-08T04:35:04.662Z</updated>
+    <updated>2021-08-08T04:35:06.000Z</updated>
     
     
     <summary type="html">&lt;p&gt;突然想起一个很重要的问题，为什么大家（包括我）都认为参加电子设计大赛，或者做点什么制作都非得要先学好单片机，还有模电数电这些基础知识？&lt;br&gt;&lt;em&gt;本文针对还没有足够专业知识的同学，大神可忽略~&lt;/em&gt;&lt;/p&gt;</summary>
@@ -275,10 +275,10 @@
     <link href="https://kiritox.me/modify-install-language-and-upgrade/"/>
     <id>https://kiritox.me/modify-install-language-and-upgrade/</id>
     <published>2016-05-25T09:32:00.000Z</published>
-    <updated>2021-08-08T04:14:51.542Z</updated>
+    <updated>2021-08-08T04:14:52.000Z</updated>
     
     
-    <summary type="html">&lt;p&gt;本文方法适用场景：希望把系统升级到另一个语言的系统版本（作为原生语言），而不需要额外添加语言包。适用于Windows7/8/8.1使用ISO升级安装。&lt;/p&gt;</summary>
+    <summary type="html">&lt;p&gt;本文方法适用场景：希望把系统升级到另一个语言的系统版本（作为原生语言），而不需要额外添加语言包。适用于Windows7&amp;#x2F;8&amp;#x2F;8.1使用ISO升级安装。&lt;/p&gt;</summary>
     
     
     

@@ -32,7 +32,7 @@
 <meta property="og:image" content="https://kiritox.me/flash-wndr3700v4-to-stock-firmware/701989518.png">
 <meta property="og:image" content="https://kiritox.me/flash-wndr3700v4-to-stock-firmware/1620348105.png">
 <meta property="article:published_time" content="2016-11-23T02:38:00.000Z">
-<meta property="article:modified_time" content="2021-08-08T04:40:02.533Z">
+<meta property="article:modified_time" content="2021-08-08T04:40:04.000Z">
 <meta property="article:author" content="KiritoA">
 <meta property="article:tag" content="WNDR3700v4">
 <meta property="article:tag" content="OpenWRT">
@@ -289,7 +289,7 @@
 
 <h2 id="原因分析"><a href="#原因分析" class="headerlink" title="原因分析"></a>原因分析</h2><p>本人之前使用的是<strong>openwrt 15.01</strong>版本，TFTP 刷回原厂固件表现为路由器 Power 指示灯一直是橙色，似乎还不断地自动重启，因此常规的救砖方式无效。先上结论，刷回原版固件出问题基本都是因为刷入第三方固件时<strong>破坏了路由器里面 Flash 的分区</strong>。</p>
 <p>WNDR3700v4 里面的 Flash 也有空间是用来存放设置，uboot 等内容，各自存放在不同的分区，而 firmware 部分才是真正的存放 Openwrt 系统的地方，Openwrt 里面看到的可用空间也是这部分的内容。而刷入的 img 文件（平时说的固件）其实也包括了整个 Flash 的分区信息。</p>
-<p>根据 Openwrt 官网 WNDR4300 Flash 布局的<a target="_blank" rel="noopener" href="https://wiki.openwrt.org/zh-cn/toh/netgear/wndr4300">说明</a>，WNDR3700v4/WNDR4300（两款型号硬件基本一致，也都使用 NAND Flash）原版固件的 Flash 布局（为方便理解统一称为分区）是这样的：</p>
+<p>根据 Openwrt 官网 WNDR4300 Flash 布局的<a target="_blank" rel="noopener" href="https://wiki.openwrt.org/zh-cn/toh/netgear/wndr4300">说明</a>，WNDR3700v4&#x2F;WNDR4300（两款型号硬件基本一致，也都使用 NAND Flash）原版固件的 Flash 布局（为方便理解统一称为分区）是这样的：</p>
 <p><img src="/flash-wndr3700v4-to-stock-firmware/3394940427.png" alt="Screenshot 2016-12-03 09.35.17.png"></p>
 <p>Openwrt 官方固件是这样的</p>
 <p><img src="/flash-wndr3700v4-to-stock-firmware/344266447.png" alt="Screenshot 2016-12-03 09.35.23.png"></p>
@@ -310,7 +310,7 @@
 </li>
 <li><p>在 DD-WRT 下载 WNDR3700v4 最新固件<a target="_blank" rel="noopener" href="http://www.dd-wrt.com/wiki/index.php/Netgear_WNDR3700#v4">ftp://ftp.dd-wrt.com/betas/2014/02-04-2014-r23503/netgear-wndr3700v4/wndr3700v4-factory.img</a>。</p>
 </li>
-<li><p>下载最新版固件，可选择中国/俄罗斯版(PRRU)固件或者国际版固件，PRRU 固件增加了 IPTV，IP-MAC，脱机下载等国际版没有的功能，而国际版则版本较新，修复改进的项目比较多，各位可以自行斟酌选哪个版本。</p>
+<li><p>下载最新版固件，可选择中国&#x2F;俄罗斯版(PRRU)固件或者国际版固件，PRRU 固件增加了 IPTV，IP-MAC，脱机下载等国际版没有的功能，而国际版则版本较新，修复改进的项目比较多，各位可以自行斟酌选哪个版本。</p>
 </li>
 </ol>
 <p><strong>Firmware Version 1.0.2.80 (All Regions Except China &amp; Russia)</strong><br><a target="_blank" rel="noopener" href="http://www.downloads.netgear.com/files/GDC/WNDR3700V4/WNDR3700v4-V1.0.2.80.zip">http://www.downloads.netgear.com/files/GDC/WNDR3700V4/WNDR3700v4-V1.0.2.80.zip</a></p>
