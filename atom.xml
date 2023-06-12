@@ -40,7 +40,7 @@
     <link href="https://kiritox.me/igd-passthrough-for-intel-nuc8i7beh/"/>
     <id>https://kiritox.me/igd-passthrough-for-intel-nuc8i7beh/</id>
     <published>2021-08-08T05:00:00.000Z</published>
-    <updated>2023-06-12T09:03:37.020Z</updated>
+    <updated>2023-06-12T16:15:42.013Z</updated>
     
     
     <summary type="html">&lt;h1 id=&quot;Host-Configuration&quot;&gt;&lt;a href=&quot;#Host-Configuration&quot; class=&quot;headerlink&quot; title=&quot;Host Configuration&quot;&gt;&lt;/a&gt;Host Configuration&lt;/h1&gt;&lt;p&gt;Virtualization Environment: Proxmox 7.0 (GRUB)&lt;br&gt;Hardware: Intel NUC NUC8i7BEH&lt;br&gt;BIOS: UEFI Mode&lt;/p&gt;</summary>
