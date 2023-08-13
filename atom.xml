@@ -6,7 +6,7 @@
   <link href="https://kiritox.me/atom.xml" rel="self"/>
   
   <link href="https://kiritox.me/"/>
-  <updated>2023-08-13T07:40:05.774Z</updated>
+  <updated>2023-08-13T07:51:18.691Z</updated>
   <id>https://kiritox.me/</id>
   
   <author>
@@ -21,7 +21,7 @@
     <link href="https://kiritox.me/experience-with-xcp-ng/"/>
     <id>https://kiritox.me/experience-with-xcp-ng/</id>
     <published>2023-08-13T06:48:53.000Z</published>
-    <updated>2023-08-13T07:40:05.774Z</updated>
+    <updated>2023-08-13T07:51:18.691Z</updated>
     
     
     <summary type="html">&lt;p&gt;As a Software Engineer and homelabber, I always run VMs for testing and daily use. Choosing a suitable and rock-solid hypervisor is always a topic for me. I have tried Proxmox (Proxmox Virtual Environment), VMWare ESXi (with vCenter) and Hyper-V Server over the years, and I now use Proxmox most of the time. But This year, I came across XCP-ng, which I had never heard of. XCP-ng is a fork from XenServer, a community-driven hypervisor, a closer solution to the ESXi. &lt;/p&gt;</summary>
