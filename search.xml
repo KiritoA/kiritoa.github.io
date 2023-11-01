@@ -152,6 +152,34 @@
       </tags>
   </entry>
   <entry>
+    <title>My experience with XCP-ng</title>
+    <url>/experience-with-xcp-ng/</url>
+    <content><![CDATA[<p>As a Software Engineer and homelabber, I always run VMs for testing and daily use. Choosing a suitable and rock-solid hypervisor is always a topic for me. I have tried Proxmox (Proxmox Virtual Environment), VMWare ESXi (with vCenter) and Hyper-V Server over the years, and I now use Proxmox most of the time. But This year, I came across XCP-ng, which I had never heard of. XCP-ng is a fork from XenServer, a community-driven hypervisor, a closer solution to the ESXi. </p>
+<span id="more"></span>
+
+
+<h1 id="Impression-of-the-XCP-ng-stack"><a href="#Impression-of-the-XCP-ng-stack" class="headerlink" title="Impression of the XCP-ng stack"></a>Impression of the XCP-ng stack</h1><p>The XCP-ng hypervisor doesn’t come with a WebGUI for management, so I need to set up a centralized management platform called <strong>Xen Orchestra</strong>, which is developed by the same team as XCP-ng.</p>
+<p>When it comes to Xen Orchestra, I really like its versatile backup options. My favourite one is <strong>Rolling Snapshots</strong>. With this feature, I can roll back VMs immediately if I accidentally do something wrong, without the need for creating snapshots manually (which I usually forget), or even create a new VM directly from a snapshot. It provides a much lower RTO and RPO than delta backup and full backup.</p>
+<p>Also, unlike Proxmox, I can manage multiple XCP-ng servers without requiring a cluster. Currently, I run two Proxmox clusters independently. I have to manage them through two separate WebGUI, which is inconvenient and error-prone.</p>
+<h1 id="Choosing-a-hypervisor"><a href="#Choosing-a-hypervisor" class="headerlink" title="Choosing a hypervisor"></a>Choosing a hypervisor</h1><p>As a personal user, the way of choosing a solution is different from businesses. Paying for commercial products and support is not a big deal for companies – they get what they pay for. As a free user, no matter which one I choose, I have to deal with most issues with my own knowledge and skills and rely heavily on the community.</p>
+<h2 id="Some-highlights-of-Proxmox"><a href="#Some-highlights-of-Proxmox" class="headerlink" title="Some highlights of Proxmox"></a>Some highlights of Proxmox</h2><p>Proxmox VE is kind of an all-in-one system solution. It comes with fully unlocked capabilities in terms of computing, storage, backup, and management center. I can do most of the configurations through its WebUI. Since it has a decentralized architectural design (or, say, a hyper-converged infrastructure), I don’t need to worry about a single point of failure.</p>
+<p>Despite its benefit, however, there is often some hacking work through SSH to make it run smoothly. But that introduces another highlight. Since Proxmox is built on top of Debian, I can apply all my professional skills to deal with problems and even learn something during the process. It’s easier to find solutions from both Proxmox and Linux communities.</p>
+<h2 id="XCP-ng-stack-is-great-but-with-some-issues"><a href="#XCP-ng-stack-is-great-but-with-some-issues" class="headerlink" title="XCP-ng stack is great, but with some issues"></a>XCP-ng stack is great, but with some issues</h2><p>When I try to use XCP-ng and Xen Orchestra, I have to put some effort to get it on and running.</p>
+<p>For example, to start my very first VM – Xen Orchestra, I have to manually create and start a VM through CLI, compiling it from source code, only to unlock the paid-only backup feature. It becomes tricky when this management VM doesn’t start (it did happen several times). I have to fix it through CLI or with a little help from <strong>XCP-ng Center</strong>, a management client only on Windows. Control plane high availability is quite crucial to an enterprise environment. However, after some research, I find that Xen Orchestra doesn’t provide a HA solution like vCenter. Maybe I could set up HA on the VM level, but I haven’t tested it yet.  </p>
+<p>Also, the <code>Advanced Live Telemetry</code> feature is somewhat unhandy. XCP-ng provides a monitoring solution based on Netdata, but I can’t register the host to Netdata Cloud, probably the reason of its old version (v1.19.0, released on Nov 28, 2019). I can neither upgrade it, nor manually install the official version as it conflicts with the XCP-ng version.</p>
+<p>I won’t complain too much, as they are all paid features. There are one-click solutions and full support available for paid users. However, both of the problems can be solved easily on Proxmox. Speaking of observability, I can utilize the official supported metric options (Graphite or InfluxDB), or install whatever I want. Prometheus node exporter and Netdata agent can run flawlessly on Proxmox.</p>
+<h1 id="Conclusion"><a href="#Conclusion" class="headerlink" title="Conclusion"></a>Conclusion</h1><p>I didn’t talk much about the capabilities of XCP-ng itself. Well, I did install some Ubuntu and Windows VMs on it, and I won’t doubt its reliability and stability. Since the Xen project has been adopted by many tech giants for long, such as AWS and Alibaba, it’s definitely production-ready and enterprise-ready.</p>
+<p>However, as a personal user, as well as a Software Engineer, I have to admit that the XCP-ng stack cannot provide the turnkey solution I need. So I decided to stick to Proxmox as my daily driver. I won’t say Proxmox is perfect, and neither is XCP-ng. They both have their problems. I believe most of my problems can be solved with effort, but I don’t want to spend too much time on it.</p>
+<p>Even so, the future of XCP-ng is still promising. It’s unfair to compare both projects without considering how long they have been developed (XCP-ng started in 2018, while Proxmox started in 2008). The XCP-ng team is still actively developing new features. There will be a new management platform called <code>XO-Lite</code> with a redesigned UI&#x2F;UX, which runs directly on XCP-ng for easier management. And I’m really impressed by the CEO of Vates – Olivier Lambert, the creator of XCP-ng and Xen Orchestra. His name always pops up while I’m searching in forums. He is basically an active member of every XCP-ng forum and every thread about XCP-ng. I can feel his passion for his projects. The tech world is changing fast, I’m sure things will be different next time I look back, and I will definitely give it another shot once it fits my need.</p>
+]]></content>
+      <tags>
+        <tag>Hypervisor</tag>
+        <tag>XCP-ng</tag>
+        <tag>Proxmox</tag>
+        <tag>Homelab</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Fixing bad ACL permission on my Synology NAS</title>
     <url>/fixing-bad-acl-permission-on-my-synology-nas/</url>
     <content><![CDATA[<h1 id="The-Issue"><a href="#The-Issue" class="headerlink" title="The Issue"></a>The Issue</h1><p>Yesterday, I created a new administrator account for my Synology NAS. For easier management, just like usual, I copied my SSH key into the NAS by calling the <code>ssh-copy-id</code> command. Strangely, that didn’t work. And it kept asking me to enter my password every time I log in. This thing had never happened before.</p>
@@ -263,48 +291,6 @@
       </tags>
   </entry>
   <entry>
-    <title>IGD passthrough for Intel NUC8i7BEH</title>
-    <url>/igd-passthrough-for-intel-nuc8i7beh/</url>
-    <content><![CDATA[<h1 id="Host-Configuration"><a href="#Host-Configuration" class="headerlink" title="Host Configuration"></a>Host Configuration</h1><p>Virtualization Environment: Proxmox 7.0 (GRUB)<br>Hardware: Intel NUC NUC8i7BEH<br>BIOS: UEFI Mode</p>
-<span id="more"></span>
-
-<h1 id="Proxmox-Configuration"><a href="#Proxmox-Configuration" class="headerlink" title="Proxmox Configuration"></a>Proxmox Configuration</h1><h2 id="Enable-IOMMU"><a href="#Enable-IOMMU" class="headerlink" title="Enable IOMMU"></a>Enable IOMMU</h2><p>Update <code>/etc/default/grub</code>.<br>Find the line with <code>GRUB_CMDLINE_LINUX_DEFAULT</code>. Set to</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">GRUB_CMDLINE_LINUX_DEFAULT=&quot;quiet intel_iommu=on video=efifb:off,vesafb:off&quot;</span><br></pre></td></tr></table></figure>
-<p>Then save the changes and update grub by calling <code>update-grub</code> </p>
-<h2 id="Load-VFIO-module"><a href="#Load-VFIO-module" class="headerlink" title="Load VFIO module"></a>Load VFIO module</h2><p>Add the following to <code>/etc/modules</code>:</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">vfio</span><br><span class="line">vfio_iommu_type1</span><br><span class="line">vfio_pci</span><br><span class="line">vfio_virqfd</span><br></pre></td></tr></table></figure>
-
-<h2 id="Blacklist-the-drivers"><a href="#Blacklist-the-drivers" class="headerlink" title="Blacklist the drivers"></a>Blacklist the drivers</h2><p>Add the following to <code>/etc/modprobe.d/pve-blacklist.conf</code></p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">blacklist snd_hda_intel</span><br><span class="line">blacklist snd_hda_codec_hdmi</span><br><span class="line">blacklist i915</span><br></pre></td></tr></table></figure>
-
-<h2 id="Enable-VFIO-for-IGD"><a href="#Enable-VFIO-for-IGD" class="headerlink" title="Enable VFIO for IGD"></a>Enable VFIO for IGD</h2><p>Run the following command to get the device ID of iGPU</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">$ lspci -n | grep -E &quot;0300&quot;</span><br><span class="line">00:02.0 0300: 8086:3ea5 (rev 01)</span><br></pre></td></tr></table></figure>
-
-<p>Copy the value <code>8086:3ea5</code>. Add this line to <code>/etc/modprobe.d/vfio.conf</code>:<br><code>options vfio-pci ids=8086:3ea5</code></p>
-<h2 id="Verification"><a href="#Verification" class="headerlink" title="Verification"></a>Verification</h2><p>Reboot. If the booting freeze at <code>Loading initial ramdisk ...</code> means the IGD driver has been blacklisted.</p>
-<h1 id="Extract-IGD-ROM"><a href="#Extract-IGD-ROM" class="headerlink" title="Extract IGD ROM"></a>Extract IGD ROM</h1><p>TLDR: here is the <a href="https://github.com/KiritoA/igd-passthrough/blob/main/intel-iris-655.rom">premake ROM file</a>.</p>
-<p>Following the guide from this link <a href="https://github.com/tmbeck/nuc-passthrough#requirements">https://github.com/tmbeck/nuc-passthrough</a>. Generate and copy the ROM file to <code>/usr/share/kvm</code> of the host.</p>
-<h1 id="Configure-VM-configuration"><a href="#Configure-VM-configuration" class="headerlink" title="Configure VM configuration"></a>Configure VM configuration</h1><ul>
-<li>Set <code>Machine</code> to <code>Default (i440fx)</code>. Legacy IGD is not compatible with q35.</li>
-<li>Set <code>Display</code> to <code>none</code>. Legacy IGD requires VGA mode to be <code>none</code>.</li>
-</ul>
-<h1 id="Update-VM-configuration"><a href="#Update-VM-configuration" class="headerlink" title="Update VM configuration"></a>Update VM configuration</h1><p>Edit <code>/etc/pve/qemu-server/&lt;vmid&gt;.conf</code>. <code>&lt;vmid&gt;</code> refer to VM ID.<br>Add this line to the end of the file:</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">hostpci0: 0000:00:02.0,legacy-igd=1,romfile=&lt;rom-file&gt;.rom</span><br></pre></td></tr></table></figure>
-<p><code>&lt;rom-file&gt;</code> is the ROM file name copied into <code>/usr/share/kvm</code>.</p>
-<h1 id="Booting-the-Windows-VM"><a href="#Booting-the-Windows-VM" class="headerlink" title="Booting the Windows VM"></a>Booting the Windows VM</h1><p><strong>Make sure remote access is working properly.</strong> There will be no signal output from HDMI.</p>
-<p>Go to the <code>Device Manager</code>. Ensure the IGD driver is working properly with no error code like 43.<br>You can also pass through USB controller <code>0000:00:14.0</code> to use USB devices like keyboards and mouses.</p>
-<h1 id="Reference"><a href="#Reference" class="headerlink" title="Reference"></a>Reference</h1><p><a href="https://pve.proxmox.com/wiki/Pci_passthrough">https://pve.proxmox.com/wiki/Pci_passthrough</a><br><a href="https://github.com/tmbeck/nuc-passthrough">https://github.com/tmbeck/nuc-passthrough</a><br><a href="https://blog.timzhong.top/2020/09/27/pve-direct-pcie/">https://blog.timzhong.top/2020/09/27/pve-direct-pcie/</a><br><a href="https://www.10bests.com/win10-htpc-on-pve/">https://www.10bests.com/win10-htpc-on-pve/</a></p>
-]]></content>
-      <categories>
-        <category>Tech</category>
-      </categories>
-      <tags>
-        <tag>NUC8i7BEH</tag>
-        <tag>virtualization</tag>
-        <tag>Proxmox</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>电信光纤升级笔记</title>
     <url>/home-fiber-network-upgrade-log/</url>
     <content><![CDATA[<p>电信的光纤升级改造计划已经搞了好几年，虽然一直都有想升级的想法，但是之前电信一直都说线路没有覆盖到不能升级，到了最近终于说是覆盖到小区了，不过去了电信营业厅问才知道升级也要收钱的( ˘･з･)没想到去完营业厅第二天电信（不是营业厅的人）就打电话来说现在要光进铜退，可以免费升光纤，我擦。。。。还好没同意升级不然白花钱了。</p>
@@ -346,6 +332,48 @@
       </categories>
       <tags>
         <tag>网络</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>IGD passthrough for Intel NUC8i7BEH</title>
+    <url>/igd-passthrough-for-intel-nuc8i7beh/</url>
+    <content><![CDATA[<h1 id="Host-Configuration"><a href="#Host-Configuration" class="headerlink" title="Host Configuration"></a>Host Configuration</h1><p>Virtualization Environment: Proxmox 7.0 (GRUB)<br>Hardware: Intel NUC NUC8i7BEH<br>BIOS: UEFI Mode</p>
+<span id="more"></span>
+
+<h1 id="Proxmox-Configuration"><a href="#Proxmox-Configuration" class="headerlink" title="Proxmox Configuration"></a>Proxmox Configuration</h1><h2 id="Enable-IOMMU"><a href="#Enable-IOMMU" class="headerlink" title="Enable IOMMU"></a>Enable IOMMU</h2><p>Update <code>/etc/default/grub</code>.<br>Find the line with <code>GRUB_CMDLINE_LINUX_DEFAULT</code>. Set to</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">GRUB_CMDLINE_LINUX_DEFAULT=&quot;quiet intel_iommu=on video=efifb:off,vesafb:off&quot;</span><br></pre></td></tr></table></figure>
+<p>Then save the changes and update grub by calling <code>update-grub</code> </p>
+<h2 id="Load-VFIO-module"><a href="#Load-VFIO-module" class="headerlink" title="Load VFIO module"></a>Load VFIO module</h2><p>Add the following to <code>/etc/modules</code>:</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">vfio</span><br><span class="line">vfio_iommu_type1</span><br><span class="line">vfio_pci</span><br><span class="line">vfio_virqfd</span><br></pre></td></tr></table></figure>
+
+<h2 id="Blacklist-the-drivers"><a href="#Blacklist-the-drivers" class="headerlink" title="Blacklist the drivers"></a>Blacklist the drivers</h2><p>Add the following to <code>/etc/modprobe.d/pve-blacklist.conf</code></p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">blacklist snd_hda_intel</span><br><span class="line">blacklist snd_hda_codec_hdmi</span><br><span class="line">blacklist i915</span><br></pre></td></tr></table></figure>
+
+<h2 id="Enable-VFIO-for-IGD"><a href="#Enable-VFIO-for-IGD" class="headerlink" title="Enable VFIO for IGD"></a>Enable VFIO for IGD</h2><p>Run the following command to get the device ID of iGPU</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">$ lspci -n | grep -E &quot;0300&quot;</span><br><span class="line">00:02.0 0300: 8086:3ea5 (rev 01)</span><br></pre></td></tr></table></figure>
+
+<p>Copy the value <code>8086:3ea5</code>. Add this line to <code>/etc/modprobe.d/vfio.conf</code>:<br><code>options vfio-pci ids=8086:3ea5</code></p>
+<h2 id="Verification"><a href="#Verification" class="headerlink" title="Verification"></a>Verification</h2><p>Reboot. If the booting freeze at <code>Loading initial ramdisk ...</code> means the IGD driver has been blacklisted.</p>
+<h1 id="Extract-IGD-ROM"><a href="#Extract-IGD-ROM" class="headerlink" title="Extract IGD ROM"></a>Extract IGD ROM</h1><p>TLDR: here is the <a href="https://github.com/KiritoA/igd-passthrough/blob/main/intel-iris-655.rom">premake ROM file</a>.</p>
+<p>Following the guide from this link <a href="https://github.com/tmbeck/nuc-passthrough#requirements">https://github.com/tmbeck/nuc-passthrough</a>. Generate and copy the ROM file to <code>/usr/share/kvm</code> of the host.</p>
+<h1 id="Configure-VM-configuration"><a href="#Configure-VM-configuration" class="headerlink" title="Configure VM configuration"></a>Configure VM configuration</h1><ul>
+<li>Set <code>Machine</code> to <code>Default (i440fx)</code>. Legacy IGD is not compatible with q35.</li>
+<li>Set <code>Display</code> to <code>none</code>. Legacy IGD requires VGA mode to be <code>none</code>.</li>
+</ul>
+<h1 id="Update-VM-configuration"><a href="#Update-VM-configuration" class="headerlink" title="Update VM configuration"></a>Update VM configuration</h1><p>Edit <code>/etc/pve/qemu-server/&lt;vmid&gt;.conf</code>. <code>&lt;vmid&gt;</code> refer to VM ID.<br>Add this line to the end of the file:</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">hostpci0: 0000:00:02.0,legacy-igd=1,romfile=&lt;rom-file&gt;.rom</span><br></pre></td></tr></table></figure>
+<p><code>&lt;rom-file&gt;</code> is the ROM file name copied into <code>/usr/share/kvm</code>.</p>
+<h1 id="Booting-the-Windows-VM"><a href="#Booting-the-Windows-VM" class="headerlink" title="Booting the Windows VM"></a>Booting the Windows VM</h1><p><strong>Make sure remote access is working properly.</strong> There will be no signal output from HDMI.</p>
+<p>Go to the <code>Device Manager</code>. Ensure the IGD driver is working properly with no error code like 43.<br>You can also pass through USB controller <code>0000:00:14.0</code> to use USB devices like keyboards and mouses.</p>
+<h1 id="Reference"><a href="#Reference" class="headerlink" title="Reference"></a>Reference</h1><p><a href="https://pve.proxmox.com/wiki/Pci_passthrough">https://pve.proxmox.com/wiki/Pci_passthrough</a><br><a href="https://github.com/tmbeck/nuc-passthrough">https://github.com/tmbeck/nuc-passthrough</a><br><a href="https://blog.timzhong.top/2020/09/27/pve-direct-pcie/">https://blog.timzhong.top/2020/09/27/pve-direct-pcie/</a><br><a href="https://www.10bests.com/win10-htpc-on-pve/">https://www.10bests.com/win10-htpc-on-pve/</a></p>
+]]></content>
+      <categories>
+        <category>Tech</category>
+      </categories>
+      <tags>
+        <tag>Proxmox</tag>
+        <tag>NUC8i7BEH</tag>
+        <tag>virtualization</tag>
       </tags>
   </entry>
   <entry>
@@ -420,31 +448,6 @@
       </tags>
   </entry>
   <entry>
-    <title>修改你的Windows安装语言并升级到对应语言的Windows8/8.1/10</title>
-    <url>/modify-install-language-and-upgrade/</url>
-    <content><![CDATA[<p>本文方法适用场景：希望把系统升级到另一个语言的系统版本（作为原生语言），而不需要额外添加语言包。适用于Windows7&#x2F;8&#x2F;8.1使用ISO升级安装。</p>
-<span id="more"></span>
-
-
-
-<h2 id="Step-1：把Windows界面语言设置为目标语言"><a href="#Step-1：把Windows界面语言设置为目标语言" class="headerlink" title="Step 1：把Windows界面语言设置为目标语言"></a>Step 1：把Windows界面语言设置为目标语言</h2><p><strong>A: Windows 7环境（非Ultimate版本）</strong><br>使用<a href="http://www.froggie.sk/en/index.html">Vistalizator</a>修改</p>
-<p><strong>B: Windows 7 Ultimate&#x2F;Windows 8&#x2F;Windows 8.1（单语言版除外）</strong><br>参考微软官方文档即可<br><a href="http://windows.microsoft.com/zh-cn/windows7/install-or-change-a-display-language">Windows 7 Ultimate</a><br><a href="http://windows.microsoft.com/zh-cn/windows-8/add-language-keyboard">Windows 8&#x2F;Windows 8.1</a></p>
-<h2 id="Step-2：修改注册表键值"><a href="#Step-2：修改注册表键值" class="headerlink" title="Step 2：修改注册表键值"></a>Step 2：修改注册表键值</h2><p><em>如果不执行Step 1就执行这一步，直接升级时会出现无法选择“保留应用方式升级安装”的选项，因为系统语言与镜像的语言不一致</em></p>
-<p>参考自<a href="http://www.ithome.com/html/win10/203571.htm">http://www.ithome.com/html/win10/203571.htm</a></p>
-<blockquote>
-<p>Windows系统在注册表中有记录专门记录安装语言的键值，<br>1、按Win+R打开运行，输入regedit回车打开注册表编辑器；<br>2、展开以下位置：<br>HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Nls\Language<br>3、在右侧最底部找到名为InstallLanguage的注册表键值，该键值即代表系统的显示语言。我们要做的就是将其修改为想要升级到的系统语言代码即可，如下图所示：<br><img src="/modify-install-language-and-upgrade/20160127_111010_307.jpg" alt="注册表位置"></p>
-<p>比如，现有系统有英文，你想升级到的系统为简体中文版，则将其修改为0804。反之，如果现有系统为中文，想要升级到英文版系统，则将其修改为0409。不同国家或地区语言代码可<a href="https://msdn.microsoft.com/en-US/goglobal/bb964664.aspx">点此查看</a></p>
-</blockquote>
-<h2 id="Step-3：执行升级安装"><a href="#Step-3：执行升级安装" class="headerlink" title="Step 3：执行升级安装"></a>Step 3：执行升级安装</h2><p>至此你的系统的默认语言已经完全改掉，再将不需要的语言包删除，那么你的系统已经变成原生目标语言版本的系统了，最后执行新系统的升级安装即可</p>
-]]></content>
-      <categories>
-        <category>Tech</category>
-      </categories>
-      <tags>
-        <tag>Windows</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>NAS 打造日志-硬件方案篇</title>
     <url>/nas-build-hardware-solution/</url>
     <content><![CDATA[<p>大概一年前就已经有打造NAS这个计划，不过因为各种原因一直没付诸于实践，最近因为把台式的CPU和主板二手出了终于是把这个计划提上了日程。经过一番Google和逛各种论坛对目前流行的NAS的硬件方案做了一下总结</p>
@@ -501,6 +504,31 @@
       </categories>
       <tags>
         <tag>NAS</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>修改你的Windows安装语言并升级到对应语言的Windows8/8.1/10</title>
+    <url>/modify-install-language-and-upgrade/</url>
+    <content><![CDATA[<p>本文方法适用场景：希望把系统升级到另一个语言的系统版本（作为原生语言），而不需要额外添加语言包。适用于Windows7&#x2F;8&#x2F;8.1使用ISO升级安装。</p>
+<span id="more"></span>
+
+
+
+<h2 id="Step-1：把Windows界面语言设置为目标语言"><a href="#Step-1：把Windows界面语言设置为目标语言" class="headerlink" title="Step 1：把Windows界面语言设置为目标语言"></a>Step 1：把Windows界面语言设置为目标语言</h2><p><strong>A: Windows 7环境（非Ultimate版本）</strong><br>使用<a href="http://www.froggie.sk/en/index.html">Vistalizator</a>修改</p>
+<p><strong>B: Windows 7 Ultimate&#x2F;Windows 8&#x2F;Windows 8.1（单语言版除外）</strong><br>参考微软官方文档即可<br><a href="http://windows.microsoft.com/zh-cn/windows7/install-or-change-a-display-language">Windows 7 Ultimate</a><br><a href="http://windows.microsoft.com/zh-cn/windows-8/add-language-keyboard">Windows 8&#x2F;Windows 8.1</a></p>
+<h2 id="Step-2：修改注册表键值"><a href="#Step-2：修改注册表键值" class="headerlink" title="Step 2：修改注册表键值"></a>Step 2：修改注册表键值</h2><p><em>如果不执行Step 1就执行这一步，直接升级时会出现无法选择“保留应用方式升级安装”的选项，因为系统语言与镜像的语言不一致</em></p>
+<p>参考自<a href="http://www.ithome.com/html/win10/203571.htm">http://www.ithome.com/html/win10/203571.htm</a></p>
+<blockquote>
+<p>Windows系统在注册表中有记录专门记录安装语言的键值，<br>1、按Win+R打开运行，输入regedit回车打开注册表编辑器；<br>2、展开以下位置：<br>HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Nls\Language<br>3、在右侧最底部找到名为InstallLanguage的注册表键值，该键值即代表系统的显示语言。我们要做的就是将其修改为想要升级到的系统语言代码即可，如下图所示：<br><img src="/modify-install-language-and-upgrade/20160127_111010_307.jpg" alt="注册表位置"></p>
+<p>比如，现有系统有英文，你想升级到的系统为简体中文版，则将其修改为0804。反之，如果现有系统为中文，想要升级到英文版系统，则将其修改为0409。不同国家或地区语言代码可<a href="https://msdn.microsoft.com/en-US/goglobal/bb964664.aspx">点此查看</a></p>
+</blockquote>
+<h2 id="Step-3：执行升级安装"><a href="#Step-3：执行升级安装" class="headerlink" title="Step 3：执行升级安装"></a>Step 3：执行升级安装</h2><p>至此你的系统的默认语言已经完全改掉，再将不需要的语言包删除，那么你的系统已经变成原生目标语言版本的系统了，最后执行新系统的升级安装即可</p>
+]]></content>
+      <categories>
+        <category>Tech</category>
+      </categories>
+      <tags>
+        <tag>Windows</tag>
       </tags>
   </entry>
   <entry>
@@ -795,46 +823,6 @@ Something wicked happened resolving &#39;packages.openmediavault.org:http&#39; (
       </tags>
   </entry>
   <entry>
-    <title>Intel NUC8i7BEH 实现核显直通</title>
-    <url>/zh-CN/igd-passthrough-for-intel-nuc8i7beh/</url>
-    <content><![CDATA[<h1 id="宿主机环境"><a href="#宿主机环境" class="headerlink" title="宿主机环境"></a>宿主机环境</h1><p>虚拟化环境：Proxmox 7.0<br>硬件：Intel NUC NUC8i7BEH<br>BIOS：UEFI Mode</p>
-<span id="more"></span>
-
-
-<h1 id="配置PVE"><a href="#配置PVE" class="headerlink" title="配置PVE"></a>配置PVE</h1><h2 id="开启-IOMMU"><a href="#开启-IOMMU" class="headerlink" title="开启 IOMMU"></a>开启 IOMMU</h2><p>修改 <code>/etc/default/grub</code> 文件<br>找到 <code>GRUB_CMDLINE_LINUX_DEFAULT</code> 一行，替换为<br><code>GRUB_CMDLINE_LINUX_DEFAULT=&quot;quiet intel_iommu=on video=efifb:off,vesafb:off&quot;</code><br>保存后执行 <code>update-grub</code> 更新grub</p>
-<h2 id="加载-VFIO-模块"><a href="#加载-VFIO-模块" class="headerlink" title="加载 VFIO 模块"></a>加载 VFIO 模块</h2><p>修改 <code>/etc/modules</code> 文件，添加以下内容</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">vfio</span><br><span class="line">vfio_iommu_type1</span><br><span class="line">vfio_pci</span><br><span class="line">vfio_virqfd</span><br></pre></td></tr></table></figure>
-
-<h2 id="添加驱动黑名单"><a href="#添加驱动黑名单" class="headerlink" title="添加驱动黑名单"></a>添加驱动黑名单</h2><p>修改 <code>/etc/modprobe.d/pve-blacklist.conf</code> 添加以下内容：</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">blacklist snd_hda_intel</span><br><span class="line">blacklist snd_hda_codec_hdmi</span><br><span class="line">blacklist i915</span><br></pre></td></tr></table></figure>
-
-<h2 id="绑定显卡到-VFIO"><a href="#绑定显卡到-VFIO" class="headerlink" title="绑定显卡到 VFIO"></a>绑定显卡到 VFIO</h2><p>执行 <code>lspci -n | grep -E &quot;0300&quot;</code> 查看并记录核显 VendorID 和 DeviceID</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">00:02.0 0300: 8086:3ea5 (rev 01)</span><br></pre></td></tr></table></figure>
-<p>修改 <code>/etc/modprobe.d/vfio.conf</code> 添加如下内容<br><code>options vfio-pci ids=8086:3ea5</code></p>
-<h2 id="验证"><a href="#验证" class="headerlink" title="验证"></a>验证</h2><p>重启，若启动界面卡在 <code>Loading initial ramdisk ...</code> 表示核显已被屏蔽<br>执行 <code>lsmod | grep vfio</code> 得到类似输出，表示已加载成功</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">vfio_pci               57344  2</span><br><span class="line">vfio_virqfd            16384  1 vfio_pci</span><br><span class="line">irqbypass              16384  14 vfio_pci,kvm</span><br><span class="line">vfio_iommu_type1       36864  1</span><br><span class="line">vfio                   36864  7 vfio_iommu_type1,vfio_pci</span><br></pre></td></tr></table></figure>
-
-<h1 id="提取核显ROM"><a href="#提取核显ROM" class="headerlink" title="提取核显ROM"></a>提取核显ROM</h1><p>TLDR: <a href="https://github.com/KiritoA/igd-passthrough/blob/main/intel-iris-655.rom">已提取好的ROM文件</a></p>
-<p>参照 <a href="https://github.com/tmbeck/nuc-passthrough#requirements">https://github.com/tmbeck/nuc-passthrough</a> 提取核显ROM，放置到<code>/usr/share/kvm</code> ，下文假设文件路径为 <code>/usr/share/kvm/intel-iris-655.rom</code></p>
-<h1 id="配置虚拟机参数"><a href="#配置虚拟机参数" class="headerlink" title="配置虚拟机参数"></a>配置虚拟机参数</h1><ul>
-<li>Machine 必须设置为默认的 <code>i440fx</code> ，否则启动会提示 <code>legacy IGD assignment is not compatible with q35</code></li>
-<li>Display 必须设置为 <code>none</code> ，否则启动会提示 <code>legacy IGD assignment requires VGA mode to be &#39;none&#39;</code></li>
-<li>添加显卡 PCI 设备，NUC 对应 ID <code>0000:00:02.0</code></li>
-</ul>
-<h1 id="手工修改虚拟机配置"><a href="#手工修改虚拟机配置" class="headerlink" title="手工修改虚拟机配置"></a>手工修改虚拟机配置</h1><p>修改<code>/etc/pve/qemu-server/&lt;vmid&gt;.conf</code> 文件， <code>&lt;vmid&gt;</code> 对于虚拟机ID，找到添加的显卡设备一行，追加 <code>,legacy-igd=1,romfile=intel-iris-655.rom</code> ，启用 IDG Passthrough和加载ROM<br>如 <code>hostpci0: 0000:00:02.0</code><br>修改为 <code>hostpci0: 0000:00:02.0,legacy-igd=1,romfile=intel-iris-655.rom</code></p>
-<h1 id="尝试启动虚拟机"><a href="#尝试启动虚拟机" class="headerlink" title="尝试启动虚拟机"></a>尝试启动虚拟机</h1><p>提前确认好远程桌面服务启动正常，否则由于noVNC被禁用，无法控制操作系统。<br>进入设备管理器，检查显示驱动是否正常工作，没有感叹号提示。<br>此外可以选择直通USB控制器 <code>0000:00:14.0</code>，获得更好的使用体验。</p>
-<h1 id="Reference"><a href="#Reference" class="headerlink" title="Reference"></a>Reference</h1><p><a href="https://pve.proxmox.com/wiki/Pci_passthrough">https://pve.proxmox.com/wiki/Pci_passthrough</a><br><a href="https://github.com/tmbeck/nuc-passthrough">https://github.com/tmbeck/nuc-passthrough</a><br><a href="https://blog.timzhong.top/2020/09/27/pve-direct-pcie/">https://blog.timzhong.top/2020/09/27/pve-direct-pcie/</a><br><a href="https://www.10bests.com/win10-htpc-on-pve/">https://www.10bests.com/win10-htpc-on-pve/</a></p>
-]]></content>
-      <categories>
-        <category>Tech</category>
-      </categories>
-      <tags>
-        <tag>NUC8i7BEH</tag>
-        <tag>Proxmox</tag>
-        <tag>虚拟化</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Surface Pro 4 半年使用记录</title>
     <url>/surface-pro-4-experience/</url>
     <content><![CDATA[<p>手上的生产力工具戴尔笔记本电脑 (Inspiron 14 3420) 服役 4 年健康状况依然良好，除了电池没以前耐用，没有外部高速接口 (百兆有线网卡 + USB 2.0) 和屏幕材质不好 (颜色淡和发白) 外没什么明显缺点，因此一直没有升级换代的打算。但是在开始工作后，由于经常需要在 办公室-宿舍-家 之间往返，渐渐觉得这台电脑实在是太重了 (净重含电池 2.1 kg，包含电池 2.8 kg) ，每天背着近 3 kg 的重量的电脑来回跑的话实在蛋疼，因此购买一台轻便笔记本电脑的需求越来越迫切。</p>
@@ -945,28 +933,43 @@ Something wicked happened resolving &#39;packages.openmediavault.org:http&#39; (
 ]]></content>
   </entry>
   <entry>
-    <title>My experience with XCP-ng</title>
-    <url>/experience-with-xcp-ng/</url>
-    <content><![CDATA[<p>As a Software Engineer and homelabber, I always run VMs for testing and daily use. Choosing a suitable and rock-solid hypervisor is always a topic for me. I have tried Proxmox (Proxmox Virtual Environment), VMWare ESXi (with vCenter) and Hyper-V Server over the years, and I now use Proxmox most of the time. But This year, I came across XCP-ng, which I had never heard of. XCP-ng is a fork from XenServer, a community-driven hypervisor, a closer solution to the ESXi. </p>
+    <title>Intel NUC8i7BEH 实现核显直通</title>
+    <url>/zh-CN/igd-passthrough-for-intel-nuc8i7beh/</url>
+    <content><![CDATA[<h1 id="宿主机环境"><a href="#宿主机环境" class="headerlink" title="宿主机环境"></a>宿主机环境</h1><p>虚拟化环境：Proxmox 7.0<br>硬件：Intel NUC NUC8i7BEH<br>BIOS：UEFI Mode</p>
 <span id="more"></span>
 
 
-<h1 id="Impression-of-the-XCP-ng-stack"><a href="#Impression-of-the-XCP-ng-stack" class="headerlink" title="Impression of the XCP-ng stack"></a>Impression of the XCP-ng stack</h1><p>The XCP-ng hypervisor doesn’t come with a WebGUI for management, so I need to set up a centralized management platform called <strong>Xen Orchestra</strong>, which is developed by the same team as XCP-ng.</p>
-<p>When it comes to Xen Orchestra, I really like its versatile backup options. My favourite one is <strong>Rolling Snapshots</strong>. With this feature, I can roll back VMs immediately if I accidentally do something wrong, without the need for creating snapshots manually (which I usually forget), or even create a new VM directly from a snapshot. It provides a much lower RTO and RPO than delta backup and full backup.</p>
-<p>Also, unlike Proxmox, I can manage multiple XCP-ng servers without requiring a cluster. Currently, I run two Proxmox clusters independently. I have to manage them through two separate WebGUI, which is inconvenient and error-prone.</p>
-<h1 id="Choosing-a-hypervisor"><a href="#Choosing-a-hypervisor" class="headerlink" title="Choosing a hypervisor"></a>Choosing a hypervisor</h1><p>As a personal user, the way of choosing a solution is different from businesses. Paying for commercial products and support is not a big deal for companies – they get what they pay for. As a free user, no matter which one I choose, I have to deal with most issues with my own knowledge and skills and rely heavily on the community.</p>
-<h2 id="Some-highlights-of-Proxmox"><a href="#Some-highlights-of-Proxmox" class="headerlink" title="Some highlights of Proxmox"></a>Some highlights of Proxmox</h2><p>Proxmox VE is kind of an all-in-one system solution. It comes with fully unlocked capabilities in terms of computing, storage, backup, and management center. I can do most of the configurations through its WebUI. Since it has a decentralized architectural design (or, say, a hyper-converged infrastructure), I don’t need to worry about a single point of failure.</p>
-<p>Despite its benefit, however, there is often some hacking work through SSH to make it run smoothly. But that introduces another highlight. Since Proxmox is built on top of Debian, I can apply all my professional skills to deal with problems and even learn something during the process. It’s easier to find solutions from both Proxmox and Linux communities.</p>
-<h2 id="XCP-ng-stack-is-great-but-with-some-issues"><a href="#XCP-ng-stack-is-great-but-with-some-issues" class="headerlink" title="XCP-ng stack is great, but with some issues"></a>XCP-ng stack is great, but with some issues</h2><p>When I try to use XCP-ng and Xen Orchestra, I have to put some effort to get it on and running.</p>
-<p>For example, to start my very first VM – Xen Orchestra, I have to manually create and start a VM through CLI, compiling it from source code, only to unlock the paid-only backup feature. It becomes tricky when this management VM doesn’t start (it did happen several times). I have to fix it through CLI or with a little help from <strong>XCP-ng Center</strong>, a management client only on Windows. Control plane high availability is quite crucial to an enterprise environment. However, after some research, I find that Xen Orchestra doesn’t provide a HA solution like vCenter. Maybe I could set up HA on the VM level, but I haven’t tested it yet.  </p>
-<p>Also, the <code>Advanced Live Telemetry</code> feature is somewhat unhandy. XCP-ng provides a monitoring solution based on Netdata, but I can’t register the host to Netdata Cloud, probably the reason of its old version (v1.19.0, released on Nov 28, 2019). I can neither upgrade it, nor manually install the official version as it conflicts with the XCP-ng version.</p>
-<p>I won’t complain too much, as they are all paid features. There are one-click solutions and full support available for paid users. However, both of the problems can be solved easily on Proxmox. Speaking of observability, I can utilize the official supported metric options (Graphite or InfluxDB), or install whatever I want. Prometheus node exporter and Netdata agent can run flawlessly on Proxmox.</p>
-<h1 id="Conclusion"><a href="#Conclusion" class="headerlink" title="Conclusion"></a>Conclusion</h1><p>I didn’t talk much about the capabilities of XCP-ng itself. Well, I did install some Ubuntu and Windows VMs on it, and I won’t doubt its reliability and stability. Since the Xen project has been adopted by many tech giants for long, such as AWS and Alibaba, it’s definitely production-ready and enterprise-ready.</p>
-<p>However, as a personal user, as well as a Software Engineer, I have to admit that the XCP-ng stack cannot provide the turnkey solution I need. So I decided to stick to Proxmox as my daily driver. I won’t say Proxmox is perfect, and neither is XCP-ng. They both have their problems. I believe most of my problems can be solved with effort, but I don’t want to spend too much time on it.</p>
-<p>Even so, the future of XCP-ng is still promising. It’s unfair to compare both projects without considering how long they have been developed (XCP-ng started in 2018, while Proxmox started in 2008). The XCP-ng team is still actively developing new features. There will be a new management platform called <code>XO-Lite</code> with a redesigned UI&#x2F;UX, which runs directly on XCP-ng for easier management. And I’m really impressed by the CEO of Vates – Olivier Lambert, the creator of XCP-ng and Xen Orchestra. His name always pops up while I’m searching in forums. He is basically an active member of every XCP-ng forum and every thread about XCP-ng. I can feel his passion for his projects. The tech world is changing fast, I’m sure things will be different next time I look back, and I will definitely give it another shot once it fits my need.</p>
+<h1 id="配置PVE"><a href="#配置PVE" class="headerlink" title="配置PVE"></a>配置PVE</h1><h2 id="开启-IOMMU"><a href="#开启-IOMMU" class="headerlink" title="开启 IOMMU"></a>开启 IOMMU</h2><p>修改 <code>/etc/default/grub</code> 文件<br>找到 <code>GRUB_CMDLINE_LINUX_DEFAULT</code> 一行，替换为<br><code>GRUB_CMDLINE_LINUX_DEFAULT=&quot;quiet intel_iommu=on video=efifb:off,vesafb:off&quot;</code><br>保存后执行 <code>update-grub</code> 更新grub</p>
+<h2 id="加载-VFIO-模块"><a href="#加载-VFIO-模块" class="headerlink" title="加载 VFIO 模块"></a>加载 VFIO 模块</h2><p>修改 <code>/etc/modules</code> 文件，添加以下内容</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">vfio</span><br><span class="line">vfio_iommu_type1</span><br><span class="line">vfio_pci</span><br><span class="line">vfio_virqfd</span><br></pre></td></tr></table></figure>
+
+<h2 id="添加驱动黑名单"><a href="#添加驱动黑名单" class="headerlink" title="添加驱动黑名单"></a>添加驱动黑名单</h2><p>修改 <code>/etc/modprobe.d/pve-blacklist.conf</code> 添加以下内容：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">blacklist snd_hda_intel</span><br><span class="line">blacklist snd_hda_codec_hdmi</span><br><span class="line">blacklist i915</span><br></pre></td></tr></table></figure>
+
+<h2 id="绑定显卡到-VFIO"><a href="#绑定显卡到-VFIO" class="headerlink" title="绑定显卡到 VFIO"></a>绑定显卡到 VFIO</h2><p>执行 <code>lspci -n | grep -E &quot;0300&quot;</code> 查看并记录核显 VendorID 和 DeviceID</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">00:02.0 0300: 8086:3ea5 (rev 01)</span><br></pre></td></tr></table></figure>
+<p>修改 <code>/etc/modprobe.d/vfio.conf</code> 添加如下内容<br><code>options vfio-pci ids=8086:3ea5</code></p>
+<h2 id="验证"><a href="#验证" class="headerlink" title="验证"></a>验证</h2><p>重启，若启动界面卡在 <code>Loading initial ramdisk ...</code> 表示核显已被屏蔽<br>执行 <code>lsmod | grep vfio</code> 得到类似输出，表示已加载成功</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">vfio_pci               57344  2</span><br><span class="line">vfio_virqfd            16384  1 vfio_pci</span><br><span class="line">irqbypass              16384  14 vfio_pci,kvm</span><br><span class="line">vfio_iommu_type1       36864  1</span><br><span class="line">vfio                   36864  7 vfio_iommu_type1,vfio_pci</span><br></pre></td></tr></table></figure>
+
+<h1 id="提取核显ROM"><a href="#提取核显ROM" class="headerlink" title="提取核显ROM"></a>提取核显ROM</h1><p>TLDR: <a href="https://github.com/KiritoA/igd-passthrough/blob/main/intel-iris-655.rom">已提取好的ROM文件</a></p>
+<p>参照 <a href="https://github.com/tmbeck/nuc-passthrough#requirements">https://github.com/tmbeck/nuc-passthrough</a> 提取核显ROM，放置到<code>/usr/share/kvm</code> ，下文假设文件路径为 <code>/usr/share/kvm/intel-iris-655.rom</code></p>
+<h1 id="配置虚拟机参数"><a href="#配置虚拟机参数" class="headerlink" title="配置虚拟机参数"></a>配置虚拟机参数</h1><ul>
+<li>Machine 必须设置为默认的 <code>i440fx</code> ，否则启动会提示 <code>legacy IGD assignment is not compatible with q35</code></li>
+<li>Display 必须设置为 <code>none</code> ，否则启动会提示 <code>legacy IGD assignment requires VGA mode to be &#39;none&#39;</code></li>
+<li>添加显卡 PCI 设备，NUC 对应 ID <code>0000:00:02.0</code></li>
+</ul>
+<h1 id="手工修改虚拟机配置"><a href="#手工修改虚拟机配置" class="headerlink" title="手工修改虚拟机配置"></a>手工修改虚拟机配置</h1><p>修改<code>/etc/pve/qemu-server/&lt;vmid&gt;.conf</code> 文件， <code>&lt;vmid&gt;</code> 对于虚拟机ID，找到添加的显卡设备一行，追加 <code>,legacy-igd=1,romfile=intel-iris-655.rom</code> ，启用 IDG Passthrough和加载ROM<br>如 <code>hostpci0: 0000:00:02.0</code><br>修改为 <code>hostpci0: 0000:00:02.0,legacy-igd=1,romfile=intel-iris-655.rom</code></p>
+<h1 id="尝试启动虚拟机"><a href="#尝试启动虚拟机" class="headerlink" title="尝试启动虚拟机"></a>尝试启动虚拟机</h1><p>提前确认好远程桌面服务启动正常，否则由于noVNC被禁用，无法控制操作系统。<br>进入设备管理器，检查显示驱动是否正常工作，没有感叹号提示。<br>此外可以选择直通USB控制器 <code>0000:00:14.0</code>，获得更好的使用体验。</p>
+<h1 id="Reference"><a href="#Reference" class="headerlink" title="Reference"></a>Reference</h1><p><a href="https://pve.proxmox.com/wiki/Pci_passthrough">https://pve.proxmox.com/wiki/Pci_passthrough</a><br><a href="https://github.com/tmbeck/nuc-passthrough">https://github.com/tmbeck/nuc-passthrough</a><br><a href="https://blog.timzhong.top/2020/09/27/pve-direct-pcie/">https://blog.timzhong.top/2020/09/27/pve-direct-pcie/</a><br><a href="https://www.10bests.com/win10-htpc-on-pve/">https://www.10bests.com/win10-htpc-on-pve/</a></p>
 ]]></content>
+      <categories>
+        <category>Tech</category>
+      </categories>
       <tags>
-        <tag>Hypervisor, XCP-ng, Proxmox, Homelab</tag>
+        <tag>Proxmox</tag>
+        <tag>NUC8i7BEH</tag>
+        <tag>虚拟化</tag>
       </tags>
   </entry>
 </search>

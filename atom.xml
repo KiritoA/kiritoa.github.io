@@ -6,7 +6,7 @@
   <link href="https://kiritox.me/atom.xml" rel="self"/>
   
   <link href="https://kiritox.me/"/>
-  <updated>2023-08-13T07:51:18.691Z</updated>
+  <updated>2023-11-01T04:57:19.399Z</updated>
   <id>https://kiritox.me/</id>
   
   <author>
@@ -21,7 +21,7 @@
     <link href="https://kiritox.me/experience-with-xcp-ng/"/>
     <id>https://kiritox.me/experience-with-xcp-ng/</id>
     <published>2023-08-13T06:48:53.000Z</published>
-    <updated>2023-08-13T07:51:18.691Z</updated>
+    <updated>2023-11-01T04:57:19.399Z</updated>
     
     
     <summary type="html">&lt;p&gt;As a Software Engineer and homelabber, I always run VMs for testing and daily use. Choosing a suitable and rock-solid hypervisor is always a topic for me. I have tried Proxmox (Proxmox Virtual Environment), VMWare ESXi (with vCenter) and Hyper-V Server over the years, and I now use Proxmox most of the time. But This year, I came across XCP-ng, which I had never heard of. XCP-ng is a fork from XenServer, a community-driven hypervisor, a closer solution to the ESXi. &lt;/p&gt;</summary>
@@ -29,7 +29,13 @@
     
     
     
-    <category term="Hypervisor, XCP-ng, Proxmox, Homelab" scheme="https://kiritox.me/tags/Hypervisor-XCP-ng-Proxmox-Homelab/"/>
+    <category term="Hypervisor" scheme="https://kiritox.me/tags/Hypervisor/"/>
+    
+    <category term="XCP-ng" scheme="https://kiritox.me/tags/XCP-ng/"/>
+    
+    <category term="Proxmox" scheme="https://kiritox.me/tags/Proxmox/"/>
+    
+    <category term="Homelab" scheme="https://kiritox.me/tags/Homelab/"/>
     
   </entry>
   
@@ -67,11 +73,11 @@
     <category term="Tech" scheme="https://kiritox.me/categories/Tech/"/>
     
     
+    <category term="Proxmox" scheme="https://kiritox.me/tags/Proxmox/"/>
+    
     <category term="NUC8i7BEH" scheme="https://kiritox.me/tags/NUC8i7BEH/"/>
     
     <category term="virtualization" scheme="https://kiritox.me/tags/virtualization/"/>
-    
-    <category term="Proxmox" scheme="https://kiritox.me/tags/Proxmox/"/>
     
   </entry>
   
@@ -90,9 +96,9 @@
     <category term="Tech" scheme="https://kiritox.me/categories/Tech/"/>
     
     
-    <category term="NUC8i7BEH" scheme="https://kiritox.me/tags/NUC8i7BEH/"/>
-    
     <category term="Proxmox" scheme="https://kiritox.me/tags/Proxmox/"/>
+    
+    <category term="NUC8i7BEH" scheme="https://kiritox.me/tags/NUC8i7BEH/"/>
     
     <category term="虚拟化" scheme="https://kiritox.me/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/"/>
     
